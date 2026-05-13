@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     database_url: str = "postgresql://user:password@localhost:5432/appdb"
     api_secret_key: str = "change-me-in-production"
-    default_ai_provider: str = "claude"  # openai | claude | gemini
+    default_ai_provider: str = "claude"     # openai | claude | gemini
+    webhook_secret: str = "webhook-secret-change-me"
+    n8n_user: str = "admin"
+    n8n_password: str = "changeme"
 
     class Config:
         env_file = ".env"

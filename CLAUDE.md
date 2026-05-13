@@ -1,67 +1,167 @@
-# CLAUDE PROJECT INSTRUCTIONS
+# AI AUTOMATION COMPANY — MASTER ENGINEERING DIRECTIVE
 
-## Project Overview
-This is an AI automation business template built to generate income from both the US and India markets.
-The project is being built by the owner (based in US) in collaboration with a remote operator/cousin
-(based in Punjab, India — Chandigarh/Ludhiana area). The goal is to launch a real, scalable online
-business that can run semi-independently from India while growing US revenue over time.
+## What We Are Building
+A scalable AI Automation Operations Platform serving businesses in India and the United States.
+This is NOT a collection of scripts. It is an enterprise-ready, modular, reusable infrastructure
+that will eventually power SaaS products, white-label client deployments, and AI agent workflows.
 
-## Business Goals
-- Build AI-powered automation services that clients pay for (subscriptions, APIs, one-time projects)
-- Enable the India-based operator to manage and grow the business independently over time
-- Generate US revenue (e.g. SaaS, automation agencies, white-label AI tools) with India as the ops base
-- Start lean (low cost), scale smart — use AI tools to multiply output without hiring
+## Team
+- Owner/Architect (US): handles infrastructure, APIs, architecture decisions, funding
+- Operator/Cousin (India, Punjab — Chandigarh/Ludhiana area): handles client delivery, day-to-day ops
+- AI pair: Claude Code + Cursor AI as the engineering environment
 
-## Team & Collaboration
-- Owner/Dev: US-based, handles architecture, funding, AI APIs, infrastructure decisions
-- Operator/Cousin: India-based (Punjab), handles delivery, client comms, day-to-day execution
-- All SOPs (Standard Operating Procedures) must be written so the operator can follow them independently
-- Use Notion for SOPs, task tracking, and documentation shared between both
+---
 
-## Tech Stack & Tools
-- **AI Tools**: Cursor AI, Claude Code, Claude API, OpenAI API, Gemini API
-- **Backend**: Python (FastAPI preferred), Docker, reusable service modules
-- **Frontend**: Next.js / React, deployable to Vercel
-- **Database**: PostgreSQL or SQLite to start, scalable later
-- **Infra**: Windows 11 Pro + WSL2 (dev environment), Docker for local + prod parity
-- **Deployment**: Vercel (frontend/serverless), Docker Compose (backend services)
-- **PM / Docs**: Notion, SOPs per workflow
+## Platform Vision
+This platform will support:
+- WhatsApp AI assistants
+- Business workflow automation (n8n)
+- CRM integrations
+- AI lead handling & appointment booking
+- AI customer support bots
+- AI content generation systems
+- Reusable client deployment templates
+- Internal business operations tooling
 
-## Infrastructure Notes
-- Dev machine runs Windows 11 Pro with WSL2 (Ubuntu) — all dev work happens inside WSL
-- Docker is being set up; all services must be containerized
-- Owner has a spare 32GB RAM / 1TB laptop that can serve as a local server to save cloud costs
-- APIs in use: OpenAI, Anthropic (Claude), Google (Gemini) — keys stored in .env, never hardcoded
+### Reusable Templates (clone per client type)
+- Salons / Barbershops
+- Clinics / Dentists
+- Gyms / Fitness
+- Immigration consultants
+- Trucking companies
+- Local / Service businesses
 
-## Engineering Rules
-- Keep code modular — one file per concern, no god files
-- No hardcoded secrets — all keys and credentials go in .env files
-- Use environment variables for all config (API keys, DB URLs, ports)
-- Prefer reusable services — build once, use across multiple automations
-- Use Docker for reproducibility — if it runs locally it must run in prod
-- Document important decisions in /docs/decisions/
-- Write SOPs for every repeatable process in /docs/sops/
+---
 
-## Folder Conventions
+## Tech Stack
+
+### Backend
+- Python 3.12, FastAPI, SQLAlchemy, PostgreSQL
+- Alembic (database migrations)
+- Docker + Docker Compose
+
+### Frontend
+- Next.js 16 (React), Tailwind CSS
+- Vercel deployment
+
+### Automation
+- n8n (self-hosted, Dockerized)
+- Webhooks (FastAPI endpoints)
+- API integrations (WhatsApp, CRM, calendars)
+
+### AI APIs
+- Anthropic Claude (default — claude-sonnet-4-6)
+- OpenAI (gpt-4o-mini)
+- Google Gemini (gemini-2.5-flash)
+
+### Infrastructure
+- WSL2 (Ubuntu) on Windows 11 Pro
+- Docker Desktop
+- Git + GitHub (Devin19910/Hap-Dev)
+- Future: cloud VPS or spare 32GB/1TB laptop as server
+
+---
+
+## Folder Structure
+
 ```
-backend/app/api/        -> API route handlers
-backend/app/services/   -> business logic & AI integrations
-backend/app/models/     -> DB models (SQLAlchemy or similar)
-backend/app/utils/      -> shared helpers and utilities
-frontend/               -> Next.js app, deployable to Vercel
-docs/sops/              -> Standard Operating Procedures for the operator
-docs/decisions/         -> Architecture Decision Records (ADRs)
-scripts/                -> setup scripts, automation utilities
+backend/app/api/          → API route handlers
+backend/app/services/     → Business logic & AI integrations
+backend/app/models/       → SQLAlchemy DB models
+backend/app/utils/        → Shared helpers, auth, config
+automation/n8n/           → Exported n8n workflow JSON templates
+automation/webhooks/      → Webhook handler docs & templates
+automation/integrations/  → Third-party integration guides
+database/migrations/      → Alembic migration files
+database/schemas/         → Raw SQL schema references
+database/seeds/           → Seed data for dev/testing
+frontend/app/             → Next.js pages (landing + dashboard)
+docs/architecture/        → System design docs
+docs/setup/               → Environment setup guides
+docs/api/                 → API endpoint documentation
+prompts/business/         → Reusable prompts for client deliverables
+prompts/ai_workflows/     → Prompts that drive automation pipelines
+prompts/coding/           → Prompts for engineering tasks
+memory/decisions/         → Architecture Decision Records (ADRs)
+memory/lessons/           → Hard-won lessons, gotchas, fixes
+internal_tools/scripts/   → Dev helpers, deployment utilities
+internal_tools/admin/     → Admin panel utilities
+sops/                     → Standard Operating Procedures
 ```
 
-## AI Workflow Philosophy
-- Build reusable automations — every workflow should be a module, not a one-off
-- Track architecture decisions — write a short ADR when making a significant tech choice
-- Prioritize scalability — design for 10x usage from day one, even if starting at 1x
-- Use AI tools to multiply output — Cursor + Claude Code + APIs are force multipliers
-- SOPs first — if a human has to do it more than once, write the SOP before automating it
+---
 
-## Deployment Target
-- Frontend: Vercel (zero-config for Next.js, easy for the operator to redeploy)
-- Backend: Docker Compose on VPS or local server (migrate to cloud when revenue justifies it)
-- Keep infra costs near zero at launch — use free tiers and existing hardware first
+## Engineering Principles
+
+### 1. Clean Architecture
+- Separate routes / services / models / utilities — never mix concerns
+- One file = one responsibility
+- Prefer reusable modules over one-off code
+
+### 2. Environment Safety
+- Zero hardcoded secrets — everything in `.env`
+- `.env` is always gitignored
+- `.env.example` is the template (no real values)
+
+### 3. Documentation Standard
+Every major feature must include:
+- What it does
+- How to set it up
+- How to troubleshoot it
+
+### 4. AI-Readable Codebase
+- Consistent naming conventions
+- Clear folder responsibilities
+- CLAUDE.md always up to date
+- Inline comments only for non-obvious logic
+
+### 5. Reusability First
+- Every automation is a reusable module
+- Every client setup follows a template
+- Every SOP is written so someone new can follow it
+
+### 6. Beginner-Friendly
+- The India operator must be able to follow every SOP independently
+- Avoid clever/obscure code
+- Prefer readable over terse
+
+---
+
+## Development Priorities
+
+| Priority | Area | Status |
+|---|---|---|
+| 1 | Backend foundation (FastAPI, Docker, PostgreSQL, health checks) | ✅ Done |
+| 2 | AI service layer (Claude, OpenAI, Gemini router) | ✅ Done |
+| 3 | Client & subscription management | ✅ Done |
+| 4 | n8n workflow automation + webhooks | 🔄 In Progress |
+| 5 | Database migrations (Alembic) | 🔄 In Progress |
+| 6 | Authentication system (JWT) | 🔄 In Progress |
+| 7 | Admin dashboard | 🔜 Planned |
+| 8 | WhatsApp AI integration | 🔜 Planned |
+| 9 | CRM integrations | 🔜 Planned |
+| 10 | SaaS multi-tenant layer | 🔜 Planned |
+
+---
+
+## SOP Philosophy
+This project operates like a real company. SOPs exist for:
+- Deployment (backend, frontend, n8n)
+- Client onboarding
+- Debugging & troubleshooting
+- Backup strategies
+- API key management
+- Automation setup
+- New developer onboarding
+
+---
+
+## Long-Term Goal
+We are building:
+- A scalable AI automation company
+- An AI operations infrastructure
+- A reusable automation ecosystem
+- A future SaaS foundation
+- An AI-assisted engineering environment
+
+Think like a long-term technical partner, not a one-shot code generator.

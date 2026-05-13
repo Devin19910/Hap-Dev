@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .models.base import init_db
-from .api import health, ai, clients, subscriptions
+from .api import health, ai, clients, subscriptions, webhooks, auth
 
 app = FastAPI(
     title="AI Automation Company API",
-    description="Multi-provider AI automation platform — OpenAI, Claude, Gemini",
+    description="Multi-provider AI automation platform — OpenAI, Claude, Gemini + n8n workflows",
     version="1.0.0",
 )
 
@@ -17,9 +17,11 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(ai.router)
 app.include_router(clients.router)
 app.include_router(subscriptions.router)
+app.include_router(webhooks.router)
 
 
 @app.on_event("startup")
@@ -29,4 +31,8 @@ def on_startup():
 
 @app.get("/")
 async def root():
-    return {"message": "AI Automation API running", "docs": "/docs"}
+    return {
+        "message": "AI Automation API running",
+        "docs": "/docs",
+        "version": "1.0.0",
+    }
