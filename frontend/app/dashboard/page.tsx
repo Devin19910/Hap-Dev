@@ -10,7 +10,20 @@ type Client    = { id: string; name: string; email: string; api_key: string; is_
 type Sub       = { tier: string; monthly_limit: number; requests_used: number; remaining: number; is_active: boolean }
 type Job       = { id: string; client_id: string; provider: string; prompt: string; response: string | null; tokens_used: number; status: string; created_at: string }
 
-type Tab = "overview" | "clients" | "jobs" | "team"
+type Conversation = {
+  id: string
+  phone_number: string
+  client_id: string
+  display_name: string
+  last_message: string
+  last_reply: string
+  last_intent: string
+  message_count: string
+  created_at: string
+  updated_at: string
+}
+
+type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "team"
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
@@ -95,10 +108,11 @@ function LoginScreen({ onLogin }: { onLogin: (token: string, user: AdminUser) =>
 // ── Sidebar ────────────────────────────────────────────────────────────────
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
-  { id: "overview", label: "Overview",  icon: "◈" },
-  { id: "clients",  label: "Clients",   icon: "👥" },
-  { id: "jobs",     label: "Jobs",      icon: "⚙" },
-  { id: "team",     label: "Team",      icon: "🔑" },
+  { id: "overview",  label: "Overview",   icon: "◈" },
+  { id: "clients",   label: "Clients",    icon: "👥" },
+  { id: "jobs",      label: "Jobs",       icon: "⚙" },
+  { id: "whatsapp",  label: "WhatsApp",   icon: "💬" },
+  { id: "team",      label: "Team",       icon: "🔑" },
 ]
 
 function Sidebar({ tab, setTab, user, onLogout }: {
@@ -138,16 +152,17 @@ function Sidebar({ tab, setTab, user, onLogout }: {
 
 // ── Overview tab ──────────────────────────────────────────────────────────
 
-function OverviewTab({ token, clients, jobs }: { token: string; clients: Client[]; jobs: Job[] }) {
+function OverviewTab({ token, clients, jobs, conversations }: {
+  token: string; clients: Client[]; jobs: Job[]; conversations: Conversation[]
+}) {
   const totalTokens = jobs.reduce((s, j) => s + (j.tokens_used ?? 0), 0)
   const doneJobs    = jobs.filter(j => j.status === "done").length
-  const failedJobs  = jobs.filter(j => j.status === "failed").length
 
   const stats = [
-    { label: "Active Clients",  value: clients.length,                  color: "text-sky-400" },
-    { label: "Total Jobs",      value: jobs.length,                     color: "text-violet-400" },
-    { label: "Successful",      value: doneJobs,                        color: "text-green-400" },
-    { label: "Tokens Used",     value: totalTokens.toLocaleString(),    color: "text-amber-400" },
+    { label: "Active Clients",   value: clients.length,               color: "text-sky-400" },
+    { label: "Total Jobs",       value: jobs.length,                  color: "text-violet-400" },
+    { label: "WA Conversations", value: conversations.length,         color: "text-green-400" },
+    { label: "Tokens Used",      value: totalTokens.toLocaleString(), color: "text-amber-400" },
   ]
 
   const recent = [...jobs].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8)
@@ -536,6 +551,200 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
   )
 }
 
+// ── WhatsApp tab ──────────────────────────────────────────────────────────
+
+const INTENT_STYLE: Record<string, string> = {
+  booking:  "bg-sky-500/20 text-sky-400",
+  support:  "bg-amber-500/20 text-amber-400",
+  inquiry:  "bg-violet-500/20 text-violet-400",
+  other:    "bg-slate-700 text-slate-400",
+}
+
+function intentStyle(intent: string) {
+  return INTENT_STYLE[intent?.toLowerCase()] ?? INTENT_STYLE.other
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1)  return "just now"
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+function WhatsAppTab({ token, clients }: { token: string; clients: Client[] }) {
+  const [convos, setConvos]     = useState<Conversation[]>([])
+  const [selected, setSelected] = useState<Conversation | null>(null)
+  const [search, setSearch]     = useState("")
+  const [loading, setLoading]   = useState(true)
+  const [clientFilter, setClientFilter] = useState("all")
+
+  async function load() {
+    setLoading(true)
+    const data: Conversation[] = await apiFetch(token, "/conversations").catch(() => [])
+    setConvos(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [token])
+
+  function clientName(id: string) {
+    return clients.find(c => c.id === id)?.name ?? id.slice(0, 8)
+  }
+
+  const filtered = convos.filter(c => {
+    const matchSearch = !search ||
+      c.phone_number.includes(search) ||
+      c.display_name.toLowerCase().includes(search.toLowerCase()) ||
+      c.last_message.toLowerCase().includes(search.toLowerCase())
+    const matchClient = clientFilter === "all" || c.client_id === clientFilter
+    return matchSearch && matchClient
+  })
+
+  return (
+    <div className="flex gap-5 h-full">
+      {/* Left: list */}
+      <div className="w-80 shrink-0 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">WhatsApp</h1>
+          <button onClick={load} className="text-xs text-slate-400 hover:text-white transition px-2 py-1 rounded bg-slate-800 border border-white/5">
+            Refresh
+          </button>
+        </div>
+
+        {/* Filters */}
+        <input
+          className="bg-slate-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-sky-500 border border-white/5"
+          placeholder="Search number or name…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {clients.length > 0 && (
+          <select
+            className="bg-slate-800 text-white rounded-lg px-3 py-1.5 text-sm border border-white/5"
+            value={clientFilter}
+            onChange={e => setClientFilter(e.target.value)}
+          >
+            <option value="all">All clients</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+
+        {/* Conversation list */}
+        <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+          {loading ? (
+            <p className="text-slate-500 text-sm text-center py-8">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">No conversations yet</p>
+          ) : filtered.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setSelected(c)}
+              className={`text-left px-3 py-3 rounded-xl border transition ${
+                selected?.id === c.id
+                  ? "bg-sky-500/10 border-sky-500/40"
+                  : "bg-slate-800 border-white/5 hover:bg-slate-700"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-white text-sm font-medium truncate">
+                    {c.display_name || c.phone_number}
+                  </p>
+                  {c.display_name && (
+                    <p className="text-slate-500 text-xs">{c.phone_number}</p>
+                  )}
+                </div>
+                <span className="text-slate-500 text-xs whitespace-nowrap mt-0.5">
+                  {timeAgo(c.updated_at)}
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs mt-1 truncate">{c.last_message || "—"}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                {c.last_intent && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded capitalize font-medium ${intentStyle(c.last_intent)}`}>
+                    {c.last_intent}
+                  </span>
+                )}
+                <span className="text-xs text-slate-500">{c.message_count} msg{c.message_count !== "1" ? "s" : ""}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: detail */}
+      <div className="flex-1 overflow-y-auto">
+        {selected ? (
+          <div className="flex flex-col gap-4">
+            {/* Header */}
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white">
+                    {selected.display_name || selected.phone_number}
+                  </h2>
+                  {selected.display_name && (
+                    <p className="text-slate-400 text-sm mt-0.5">{selected.phone_number}</p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  {selected.last_intent && (
+                    <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${intentStyle(selected.last_intent)}`}>
+                      {selected.last_intent}
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-500">{selected.message_count} messages</span>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500">Client: </span>
+                  <span className="text-slate-300">{clientName(selected.client_id)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Last active: </span>
+                  <span className="text-slate-300">{new Date(selected.updated_at).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">First seen: </span>
+                  <span className="text-slate-300">{new Date(selected.created_at).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Last customer message */}
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Customer message</p>
+              <div className="bg-slate-700 rounded-xl p-4">
+                <p className="text-white text-sm whitespace-pre-wrap">
+                  {selected.last_message || <span className="text-slate-500 italic">No message recorded</span>}
+                </p>
+              </div>
+            </div>
+
+            {/* Last AI reply */}
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">AI reply sent</p>
+              <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-4">
+                <p className="text-sky-100 text-sm whitespace-pre-wrap">
+                  {selected.last_reply || <span className="text-slate-500 italic">No reply recorded</span>}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+            Select a conversation to view details
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Team tab (owner only) ──────────────────────────────────────────────────
 
 function TeamTab({ token }: { token: string }) {
@@ -616,13 +825,13 @@ function TeamTab({ token }: { token: string }) {
 // ── Root dashboard ─────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const [token, setToken]     = useState<string | null>(null)
-  const [user, setUser]       = useState<AdminUser | null>(null)
-  const [tab, setTab]         = useState<Tab>("overview")
-  const [clients, setClients] = useState<Client[]>([])
-  const [allJobs, setAllJobs] = useState<Job[]>([])
+  const [token, setToken]             = useState<string | null>(null)
+  const [user, setUser]               = useState<AdminUser | null>(null)
+  const [tab, setTab]                 = useState<Tab>("overview")
+  const [clients, setClients]         = useState<Client[]>([])
+  const [allJobs, setAllJobs]         = useState<Job[]>([])
+  const [conversations, setConversations] = useState<Conversation[]>([])
 
-  // Restore session from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("jwt")
     if (!saved) return
@@ -640,9 +849,17 @@ export default function Dashboard() {
     setAllJobs(jobs.flat())
   }, [])
 
+  const loadConversations = useCallback(async (t: string) => {
+    const data: Conversation[] = await apiFetch(t, "/conversations").catch(() => [])
+    setConversations(data)
+  }, [])
+
   useEffect(() => {
-    if (token) loadClients(token)
-  }, [token, loadClients])
+    if (token) {
+      loadClients(token)
+      loadConversations(token)
+    }
+  }, [token, loadClients, loadConversations])
 
   function handleLogin(t: string, u: AdminUser) {
     setToken(t); setUser(u)
@@ -650,7 +867,7 @@ export default function Dashboard() {
 
   function handleLogout() {
     localStorage.removeItem("jwt")
-    setToken(null); setUser(null); setClients([]); setAllJobs([])
+    setToken(null); setUser(null); setClients([]); setAllJobs([]); setConversations([])
   }
 
   if (!token || !user) return <LoginScreen onLogin={handleLogin} />
@@ -659,10 +876,11 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-900 text-white flex">
       <Sidebar tab={tab} setTab={setTab} user={user} onLogout={handleLogout} />
       <main className="flex-1 p-6 overflow-y-auto">
-        {tab === "overview" && <OverviewTab token={token} clients={clients} jobs={allJobs} />}
-        {tab === "clients"  && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
-        {tab === "jobs"     && <JobsTab token={token} clients={clients} />}
-        {tab === "team"     && user.role === "owner" && <TeamTab token={token} />}
+        {tab === "overview"  && <OverviewTab token={token} clients={clients} jobs={allJobs} conversations={conversations} />}
+        {tab === "clients"   && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
+        {tab === "jobs"      && <JobsTab token={token} clients={clients} />}
+        {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}
+        {tab === "team"      && user.role === "owner" && <TeamTab token={token} />}
       </main>
     </div>
   )
