@@ -10,6 +10,26 @@ type Client    = { id: string; name: string; email: string; api_key: string; is_
 type Sub       = { tier: string; monthly_limit: number; requests_used: number; remaining: number; is_active: boolean }
 type Job       = { id: string; client_id: string; provider: string; prompt: string; response: string | null; tokens_used: number; status: string; created_at: string }
 
+type Contact = {
+  id: string
+  client_id: string
+  phone_number: string
+  email: string
+  first_name: string
+  last_name: string
+  source: string
+  crm_hubspot_id: string
+  crm_zoho_id: string
+  last_intent: string
+  last_urgency: string
+  last_summary: string
+  notes: string
+  tags: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
 type Conversation = {
   id: string
   phone_number: string
@@ -23,7 +43,7 @@ type Conversation = {
   updated_at: string
 }
 
-type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "team"
+type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "team"
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
@@ -112,6 +132,7 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: "clients",   label: "Clients",    icon: "👥" },
   { id: "jobs",      label: "Jobs",       icon: "⚙" },
   { id: "whatsapp",  label: "WhatsApp",   icon: "💬" },
+  { id: "contacts",  label: "Contacts",   icon: "📋" },
   { id: "team",      label: "Team",       icon: "🔑" },
 ]
 
@@ -551,6 +572,352 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
   )
 }
 
+// ── Contacts tab ──────────────────────────────────────────────────────────
+
+const STATUS_OPTS = ["new", "contacted", "qualified", "converted", "lost"]
+const STATUS_STYLE: Record<string, string> = {
+  new:       "bg-sky-500/20 text-sky-400",
+  contacted: "bg-violet-500/20 text-violet-400",
+  qualified: "bg-amber-500/20 text-amber-400",
+  converted: "bg-green-500/20 text-green-400",
+  lost:      "bg-slate-700 text-slate-400",
+}
+
+function ContactsTab({ token, clients }: { token: string; clients: Client[] }) {
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [selected, setSelected] = useState<Contact | null>(null)
+  const [search, setSearch]     = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [clientFilter, setClientFilter] = useState("all")
+  const [loading, setLoading]   = useState(true)
+  const [saving, setSaving]     = useState(false)
+  const [syncMsg, setSyncMsg]   = useState("")
+  // Create form
+  const [showCreate, setShowCreate] = useState(false)
+  const [newPhone, setNewPhone]   = useState("")
+  const [newEmail, setNewEmail]   = useState("")
+  const [newFirst, setNewFirst]   = useState("")
+  const [newLast, setNewLast]     = useState("")
+  const [newClient, setNewClient] = useState("")
+  const [createErr, setCreateErr] = useState("")
+
+  async function load() {
+    setLoading(true)
+    const data: Contact[] = await apiFetch(token, "/contacts").catch(() => [])
+    setContacts(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [token])
+
+  function clientName(id: string) {
+    return clients.find(c => c.id === id)?.name ?? id.slice(0, 8)
+  }
+
+  async function saveField(field: string, value: string) {
+    if (!selected) return
+    setSaving(true)
+    const updated = await apiFetch(token, `/contacts/${selected.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ [field]: value }),
+    }).catch(() => null)
+    if (updated) {
+      setSelected(updated)
+      setContacts(prev => prev.map(c => c.id === updated.id ? updated : c))
+    }
+    setSaving(false)
+  }
+
+  async function syncContact() {
+    if (!selected) return
+    setSyncMsg("Syncing…")
+    const result = await apiFetch(token, `/contacts/${selected.id}/sync`, { method: "POST" }).catch(() => null)
+    if (result) {
+      setSyncMsg(`HubSpot: ${result.hubspot_id || "—"} | Zoho: ${result.zoho_id || "—"}`)
+      load()
+    } else {
+      setSyncMsg("Sync failed — check backend logs")
+    }
+  }
+
+  async function deleteContact() {
+    if (!selected || !confirm("Delete this contact?")) return
+    await apiFetch(token, `/contacts/${selected.id}`, { method: "DELETE" }).catch(() => {})
+    setSelected(null)
+    load()
+  }
+
+  async function createContact() {
+    setCreateErr("")
+    if (!newClient) { setCreateErr("Select a client"); return }
+    if (!newPhone && !newEmail) { setCreateErr("Enter phone or email"); return }
+    const c = await apiFetch(token, "/contacts", {
+      method: "POST",
+      body: JSON.stringify({
+        client_id:    newClient,
+        phone_number: newPhone,
+        email:        newEmail,
+        first_name:   newFirst,
+        last_name:    newLast,
+        source:       "manual",
+      }),
+    }).catch((e: any) => { setCreateErr(e.message); return null })
+    if (c) {
+      setNewPhone(""); setNewEmail(""); setNewFirst(""); setNewLast(""); setNewClient("")
+      setShowCreate(false)
+      load()
+      setSelected(c)
+    }
+  }
+
+  const filtered = contacts.filter(c => {
+    const name = `${c.first_name} ${c.last_name}`.toLowerCase()
+    const matchSearch = !search ||
+      c.phone_number.includes(search) ||
+      name.includes(search.toLowerCase()) ||
+      c.email.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter === "all" || c.status === statusFilter
+    const matchClient = clientFilter === "all" || c.client_id === clientFilter
+    return matchSearch && matchStatus && matchClient
+  })
+
+  return (
+    <div className="flex gap-5 h-full">
+      {/* Left: list + filters */}
+      <div className="w-72 shrink-0 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">Contacts</h1>
+          <div className="flex gap-2">
+            <button onClick={load} className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 border border-white/5">
+              Refresh
+            </button>
+            <button onClick={() => setShowCreate(v => !v)}
+              className="text-xs bg-sky-500 text-white px-2 py-1 rounded hover:bg-sky-400 transition">
+              + New
+            </button>
+          </div>
+        </div>
+
+        {/* Create form (collapsed by default) */}
+        {showCreate && (
+          <div className="bg-slate-800 rounded-xl p-3 border border-white/10 flex flex-col gap-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">New Contact</p>
+            <select className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs"
+              value={newClient} onChange={e => setNewClient(e.target.value)}>
+              <option value="">Select client…</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <input className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-sky-500"
+                placeholder="First name" value={newFirst} onChange={e => setNewFirst(e.target.value)} />
+              <input className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-sky-500"
+                placeholder="Last name" value={newLast} onChange={e => setNewLast(e.target.value)} />
+            </div>
+            <input className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-sky-500"
+              placeholder="Phone (+91...)" value={newPhone} onChange={e => setNewPhone(e.target.value)} />
+            <input className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-sky-500"
+              placeholder="Email" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+            {createErr && <p className="text-red-400 text-xs">{createErr}</p>}
+            <button onClick={createContact}
+              className="bg-sky-500 text-white rounded-lg py-1.5 text-xs font-semibold hover:bg-sky-400 transition">
+              Create
+            </button>
+          </div>
+        )}
+
+        {/* Filters */}
+        <input
+          className="bg-slate-800 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-sky-500 border border-white/5"
+          placeholder="Search name, phone, email…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <div className="flex gap-1 flex-wrap">
+          {["all", ...STATUS_OPTS].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`px-2 py-0.5 rounded text-xs capitalize transition ${
+                statusFilter === s ? "bg-sky-500 text-white" : "bg-slate-800 border border-white/10 text-slate-400 hover:text-white"}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+        {clients.length > 0 && (
+          <select className="bg-slate-800 text-white rounded-lg px-3 py-1.5 text-sm border border-white/5"
+            value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
+            <option value="all">All clients</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+
+        {/* List */}
+        <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+          {loading ? (
+            <p className="text-slate-500 text-sm text-center py-8">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">No contacts found</p>
+          ) : filtered.map(c => {
+            const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || c.phone_number || c.email
+            return (
+              <button key={c.id} onClick={() => { setSelected(c); setSyncMsg("") }}
+                className={`text-left px-3 py-2.5 rounded-xl border transition ${
+                  selected?.id === c.id
+                    ? "bg-sky-500/10 border-sky-500/40"
+                    : "bg-slate-800 border-white/5 hover:bg-slate-700"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-white text-sm font-medium truncate">{name}</p>
+                  <span className={`text-xs px-1.5 py-0.5 rounded capitalize whitespace-nowrap ${STATUS_STYLE[c.status] ?? STATUS_STYLE.new}`}>
+                    {c.status}
+                  </span>
+                </div>
+                <p className="text-slate-500 text-xs mt-0.5 truncate">{c.phone_number || c.email}</p>
+                {c.last_intent && (
+                  <span className={`mt-1 inline-block text-xs px-1.5 py-0.5 rounded capitalize ${intentStyle(c.last_intent)}`}>
+                    {c.last_intent}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Right: detail */}
+      <div className="flex-1 overflow-y-auto">
+        {selected ? (
+          <div className="flex flex-col gap-4 max-w-2xl">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {[selected.first_name, selected.last_name].filter(Boolean).join(" ") || selected.phone_number}
+                </h2>
+                <p className="text-slate-400 text-sm">{clientName(selected.client_id)} · {selected.source}</p>
+              </div>
+              <button onClick={deleteContact}
+                className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-1.5 rounded-lg transition">
+                Delete
+              </button>
+            </div>
+
+            {/* Contact info */}
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Phone</p>
+                <p className="text-white">{selected.phone_number || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Email</p>
+                <p className="text-white">{selected.email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Created</p>
+                <p className="text-slate-300 text-xs">{new Date(selected.created_at).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">Last active</p>
+                <p className="text-slate-300 text-xs">{new Date(selected.updated_at).toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Status + Tags */}
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5 flex flex-col gap-4">
+              <div>
+                <p className="text-xs text-slate-400 mb-2">Status</p>
+                <div className="flex gap-2 flex-wrap">
+                  {STATUS_OPTS.map(s => (
+                    <button key={s} onClick={() => saveField("status", s)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize transition ${
+                        selected.status === s ? "bg-sky-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-2">Tags <span className="text-slate-600">(comma-separated, press Enter to save)</span></p>
+                <input
+                  className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-sky-500"
+                  defaultValue={selected.tags}
+                  onKeyDown={e => e.key === "Enter" && saveField("tags", (e.target as HTMLInputElement).value)}
+                />
+              </div>
+            </div>
+
+            {/* AI Triage */}
+            {(selected.last_intent || selected.last_summary) && (
+              <div className="bg-slate-800 rounded-xl p-5 border border-white/5 flex flex-col gap-3">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Last AI Triage</p>
+                <div className="flex gap-3 flex-wrap">
+                  {selected.last_intent && (
+                    <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${intentStyle(selected.last_intent)}`}>
+                      {selected.last_intent}
+                    </span>
+                  )}
+                  {selected.last_urgency && (
+                    <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${
+                      selected.last_urgency === "high" ? "bg-red-500/20 text-red-400"
+                      : selected.last_urgency === "medium" ? "bg-amber-500/20 text-amber-400"
+                      : "bg-slate-700 text-slate-400"}`}>
+                      {selected.last_urgency} urgency
+                    </span>
+                  )}
+                </div>
+                {selected.last_summary && (
+                  <p className="text-slate-300 text-sm">{selected.last_summary}</p>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                Notes <span className="text-slate-600 normal-case">(press Enter to save)</span>
+              </p>
+              <textarea
+                className="w-full bg-slate-700 text-white rounded-xl p-3 text-sm min-h-24 resize-none outline-none focus:ring-1 focus:ring-sky-500"
+                defaultValue={selected.notes}
+                placeholder="Add operator notes…"
+                onKeyDown={e => {
+                  if (e.key === "Enter" && e.ctrlKey) saveField("notes", (e.target as HTMLTextAreaElement).value)
+                }}
+              />
+              <p className="text-xs text-slate-600 mt-1">Ctrl+Enter to save</p>
+            </div>
+
+            {/* CRM Sync */}
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">CRM Sync</p>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">HubSpot ID</p>
+                  <p className={`text-xs font-mono ${selected.crm_hubspot_id ? "text-green-400" : "text-slate-600"}`}>
+                    {selected.crm_hubspot_id || "Not synced"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Zoho ID</p>
+                  <p className={`text-xs font-mono ${selected.crm_zoho_id ? "text-green-400" : "text-slate-600"}`}>
+                    {selected.crm_zoho_id || "Not synced"}
+                  </p>
+                </div>
+              </div>
+              <button onClick={syncContact}
+                className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg px-4 py-1.5 text-sm transition">
+                {saving ? "Saving…" : "Sync to CRMs"}
+              </button>
+              {syncMsg && <p className="text-xs text-slate-400 mt-2">{syncMsg}</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+            Select a contact to view details
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── WhatsApp tab ──────────────────────────────────────────────────────────
 
 const INTENT_STYLE: Record<string, string> = {
@@ -880,6 +1247,7 @@ export default function Dashboard() {
         {tab === "clients"   && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
         {tab === "jobs"      && <JobsTab token={token} clients={clients} />}
         {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}
+        {tab === "contacts"  && <ContactsTab token={token} clients={clients} />}
         {tab === "team"      && user.role === "owner" && <TeamTab token={token} />}
       </main>
     </div>

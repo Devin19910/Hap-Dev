@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
-from .api import health, ai, clients, subscriptions, webhooks, auth, conversations
+from .api import health, ai, clients, subscriptions, webhooks, auth, conversations, contacts
 from .models.base import SessionLocal
 
 app = FastAPI(
@@ -26,6 +26,7 @@ app.include_router(clients.router)
 app.include_router(subscriptions.router)
 app.include_router(webhooks.router)
 app.include_router(conversations.router)
+app.include_router(contacts.router)
 
 
 @app.on_event("startup")

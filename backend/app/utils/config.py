@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = "whatsapp-verify-changeme"  # you choose this
     whatsapp_client_id: str = ""         # which client_id this WA line belongs to
     whatsapp_business_name: str = "Our Business"  # used in AI reply prompt
+    # HubSpot CRM (Private App token from developers.hubspot.com)
+    hubspot_api_key: str = ""
+    # Zoho CRM (OAuth2 credentials — generate refresh token via Zoho API Console)
+    zoho_client_id: str = ""
+    zoho_client_secret: str = ""
+    zoho_refresh_token: str = ""
+    # n8n webhook URL to call when a new CRM contact is created
+    n8n_new_lead_webhook: str = ""
 
     @property
     def effective_jwt_secret(self) -> str:

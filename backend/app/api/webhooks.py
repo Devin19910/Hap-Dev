@@ -10,6 +10,7 @@ from ..models.whatsapp_conversation import WhatsAppConversation
 from ..models.subscription import Subscription
 from ..services import ai_router as ai_service
 from ..services.whatsapp_service import send_message, parse_inbound
+from ..services import crm_service
 from ..utils.config import settings
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -88,6 +89,16 @@ async def whatsapp_message(request: Request, db: Session = Depends(get_db)):
 
     asyncio.create_task(_send_and_log(
         db, phone, display_name, message, reply_text, triage, client_id
+    ))
+    asyncio.create_task(crm_service.upsert_contact(
+        db=db,
+        client_id=client_id or "",
+        phone=phone,
+        display_name=display_name,
+        intent=triage.get("intent", ""),
+        urgency=triage.get("urgency", ""),
+        summary=triage.get("summary", ""),
+        source="whatsapp",
     ))
 
     return {"status": "ok"}

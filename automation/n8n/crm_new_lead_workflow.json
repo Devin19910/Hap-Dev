@@ -1,0 +1,119 @@
+{
+  "name": "CRM — New Lead Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-new-lead",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event ?? $json.event }}",
+              "operation": "equals",
+              "value2": "new_lead"
+            }
+          ]
+        }
+      },
+      "id": "node-if-new-lead",
+      "name": "Is New Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-name",
+              "name": "name",
+              "value": "={{ $json.body.name ?? $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-phone",
+              "name": "phone",
+              "value": "={{ $json.body.phone ?? $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-intent",
+              "name": "intent",
+              "value": "={{ $json.body.intent ?? $json.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-urgency",
+              "name": "urgency",
+              "value": "={{ $json.body.urgency ?? $json.urgency }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-client",
+              "name": "client_id",
+              "value": "={{ $json.body.client_id ?? $json.client_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-set",
+      "name": "Extract Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [680, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }"
+      },
+      "id": "node-respond",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ignored\" }"
+      },
+      "id": "node-ignore",
+      "name": "Ignore",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Is New Lead?", "type": "main", "index": 0 }]]
+    },
+    "Is New Lead?": {
+      "main": [
+        [{ "node": "Extract Lead Data", "type": "main", "index": 0 }],
+        [{ "node": "Ignore", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Lead Data": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
