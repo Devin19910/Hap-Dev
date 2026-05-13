@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     admin_email: str = "admin@example.com"
     admin_password: str = "changeme"
     admin_first_name: str = "Admin"
+    # WhatsApp Cloud API
+    whatsapp_phone_number_id: str = ""   # from Meta developer dashboard
+    whatsapp_access_token: str = ""      # permanent token or system user token
+    whatsapp_verify_token: str = "whatsapp-verify-changeme"  # you choose this
+    whatsapp_client_id: str = ""         # which client_id this WA line belongs to
+    whatsapp_business_name: str = "Our Business"  # used in AI reply prompt
 
     @property
     def effective_jwt_secret(self) -> str:
