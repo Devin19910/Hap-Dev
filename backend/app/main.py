@@ -1,6 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .models.base import init_db
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
 from .api import health, ai, clients, subscriptions, webhooks, auth
 
 app = FastAPI(
@@ -26,7 +28,10 @@ app.include_router(webhooks.router)
 
 @app.on_event("startup")
 def on_startup():
-    init_db()
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    alembic_cfg = AlembicConfig(os.path.join(backend_dir, "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    alembic_command.upgrade(alembic_cfg, "head")
 
 
 @app.get("/")
