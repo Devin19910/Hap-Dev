@@ -6,7 +6,7 @@ from ..models.base import get_db
 from ..models.automation_job import AutomationJob
 from ..models.subscription import Subscription
 from ..services import ai_router
-from ..utils.auth import require_api_key
+from ..utils.auth import require_api_key, require_any_auth
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -64,7 +64,7 @@ async def complete(
 async def list_jobs(
     client_id: str,
     db: Session = Depends(get_db),
-    _: str = Depends(require_api_key),
+    _=Depends(require_any_auth),
 ):
     jobs = db.query(AutomationJob).filter(AutomationJob.client_id == client_id).all()
     return jobs

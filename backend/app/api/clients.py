@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..models.base import get_db
 from ..models.client import Client
 from ..models.subscription import Subscription, TIERS
-from ..utils.auth import require_api_key
+from ..utils.auth import require_any_auth as require_api_key
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
