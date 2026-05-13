@@ -8,6 +8,7 @@ from app.models.base import Base
 from app.models.client import Client        # noqa: F401 — registers with Base
 from app.models.subscription import Subscription  # noqa: F401
 from app.models.automation_job import AutomationJob  # noqa: F401
+from app.models.admin_user import AdminUser  # noqa: F401
 
 config = context.config
 

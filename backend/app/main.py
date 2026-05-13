@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
 from .api import health, ai, clients, subscriptions, webhooks, auth
+from .models.base import SessionLocal
 
 app = FastAPI(
     title="AI Automation Company API",
@@ -32,6 +33,13 @@ def on_startup():
     alembic_cfg = AlembicConfig(os.path.join(backend_dir, "alembic.ini"))
     alembic_cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
     alembic_command.upgrade(alembic_cfg, "head")
+
+    db = SessionLocal()
+    try:
+        from .api.auth import seed_admin_if_empty
+        seed_admin_if_empty(db)
+    finally:
+        db.close()
 
 
 @app.get("/")
