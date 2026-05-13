@@ -48,6 +48,7 @@ services:
       N8N_PROTOCOL: http
       WEBHOOK_URL: http://localhost:5678/
       GENERIC_TIMEZONE: America/New_York
+      # N8N_RUNNERS_ENABLED is removed — JS runner registers automatically in n8n 2.x
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:

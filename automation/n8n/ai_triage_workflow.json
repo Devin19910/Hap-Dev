@@ -1,0 +1,111 @@
+{
+  "name": "AI Triage Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-triage",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-triage",
+      "name": "Receive Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-triage-webhook-v3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "client_id",
+              "value": "={{ $json.body.client_id ?? $json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "phone_number",
+              "value": "={{ $json.body.phone_number ?? $json.phone_number ?? 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "original_message",
+              "value": "={{ $json.body.message ?? $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "prompt",
+              "value": "={{ 'Analyze this customer message and respond with a JSON object only (no explanation, no markdown).\\n\\nMessage: \"' + ($json.body.message ?? $json.message) + '\"\\n\\nReturn this exact JSON structure:\\n{\\n  \"intent\": \"booking|complaint|general_inquiry|pricing|emergency|spam\",\\n  \"urgency\": \"high|medium|low\",\\n  \"language\": \"en|hi|pa|other\",\\n  \"suggested_action\": \"book_appointment|escalate_to_human|send_pricing|auto_reply\",\\n  \"summary\": \"one sentence summary\"\\n}' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-prepare",
+      "name": "Prepare Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://backend:8000/ai/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "change-me-in-production"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({client_id: $json.client_id, prompt: $json.prompt, provider: 'claude'}) }}",
+        "options": {}
+      },
+      "id": "http-backend",
+      "name": "Call AI Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst aiText = item.text || '';\nconst phone = $('Prepare Request').first().json.phone_number;\nconst originalMessage = $('Prepare Request').first().json.original_message;\n\nlet triage;\ntry {\n  const match = aiText.match(/\\{[\\s\\S]*?\\}/);\n  triage = JSON.parse(match ? match[0] : aiText);\n} catch (e) {\n  triage = {\n    intent: 'general_inquiry',\n    urgency: 'low',\n    language: 'en',\n    suggested_action: 'auto_reply',\n    summary: 'Parse error — defaulting to auto_reply'\n  };\n}\n\nreturn [{\n  json: {\n    ...triage,\n    job_id: item.job_id ?? null,\n    phone_number: phone,\n    original_message: originalMessage,\n    processed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-parse",
+      "name": "Parse Triage Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Receive Message": {
+      "main": [[{ "node": "Prepare Request", "type": "main", "index": 0 }]]
+    },
+    "Prepare Request": {
+      "main": [[{ "node": "Call AI Backend", "type": "main", "index": 0 }]]
+    },
+    "Call AI Backend": {
+      "main": [[{ "node": "Parse Triage Result", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d3e4f5a6-b7c8-9012-defa-345678901bcd"
+}
