@@ -1,0 +1,113 @@
+{
+  "name": "Appointments — 24h Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-confirmed",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-id",
+              "name": "appointment_id",
+              "value": "={{ $json.body.appointment_id ?? $json.appointment_id }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-name",
+              "name": "customer_name",
+              "value": "={{ $json.body.customer_name ?? $json.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-time",
+              "name": "scheduled_at",
+              "value": "={{ $json.body.scheduled_at ?? $json.scheduled_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-set",
+      "name": "Extract Appointment Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "amount": 24,
+        "unit": "hours"
+      },
+      "id": "node-wait",
+      "name": "Wait 24h Before Appointment",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "webhookId": "appointment-wait"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://backend:8000/appointments/{{ $('Extract Appointment Data').item.json.appointment_id }}/send-reminder",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.API_SECRET_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-send-reminder",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"reminder_scheduled\" }"
+      },
+      "id": "node-respond",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [460, 480]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Extract Appointment Data", "type": "main", "index": 0 },
+          { "node": "Respond 200", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Appointment Data": {
+      "main": [[{ "node": "Wait 24h Before Appointment", "type": "main", "index": 0 }]]
+    },
+    "Wait 24h Before Appointment": {
+      "main": [[{ "node": "Send WhatsApp Reminder", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

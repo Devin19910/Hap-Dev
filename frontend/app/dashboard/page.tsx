@@ -10,6 +10,24 @@ type Client    = { id: string; name: string; email: string; api_key: string; is_
 type Sub       = { tier: string; monthly_limit: number; requests_used: number; remaining: number; is_active: boolean }
 type Job       = { id: string; client_id: string; provider: string; prompt: string; response: string | null; tokens_used: number; status: string; created_at: string }
 
+type Appointment = {
+  id: string
+  client_id: string
+  contact_id: string
+  phone_number: string
+  customer_name: string
+  service: string
+  notes: string
+  requested_at_text: string
+  scheduled_at: string | null
+  duration_minutes: number
+  status: string
+  google_event_id: string
+  reminder_sent: boolean
+  created_at: string
+  updated_at: string
+}
+
 type Contact = {
   id: string
   client_id: string
@@ -43,7 +61,7 @@ type Conversation = {
   updated_at: string
 }
 
-type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "team"
+type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "appointments" | "team"
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
@@ -132,8 +150,9 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: "clients",   label: "Clients",    icon: "👥" },
   { id: "jobs",      label: "Jobs",       icon: "⚙" },
   { id: "whatsapp",  label: "WhatsApp",   icon: "💬" },
-  { id: "contacts",  label: "Contacts",   icon: "📋" },
-  { id: "team",      label: "Team",       icon: "🔑" },
+  { id: "contacts",     label: "Contacts",     icon: "📋" },
+  { id: "appointments", label: "Appointments", icon: "📅" },
+  { id: "team",         label: "Team",         icon: "🔑" },
 ]
 
 function Sidebar({ tab, setTab, user, onLogout }: {
@@ -566,6 +585,327 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Appointments tab ──────────────────────────────────────────────────────
+
+const APPT_STATUS_STYLE: Record<string, string> = {
+  pending:   "bg-amber-500/20 text-amber-400",
+  confirmed: "bg-sky-500/20 text-sky-400",
+  completed: "bg-green-500/20 text-green-400",
+  cancelled: "bg-slate-700 text-slate-400",
+}
+
+function toLocalInput(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function AppointmentsTab({ token, clients }: { token: string; clients: Client[] }) {
+  const [appts, setAppts]       = useState<Appointment[]>([])
+  const [selected, setSelected] = useState<Appointment | null>(null)
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [clientFilter, setClientFilter] = useState("all")
+  const [loading, setLoading]   = useState(true)
+  const [confirming, setConfirming] = useState(false)
+  const [confirmMsg, setConfirmMsg] = useState("")
+  // Confirm form state
+  const [schedAt, setSchedAt]   = useState("")
+  const [duration, setDuration] = useState(60)
+  const [service, setService]   = useState("")
+  const [notifyWA, setNotifyWA] = useState(true)
+
+  async function load() {
+    setLoading(true)
+    const data: Appointment[] = await apiFetch(token, "/appointments").catch(() => [])
+    setAppts(data)
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [token])
+
+  function select(a: Appointment) {
+    setSelected(a)
+    setConfirmMsg("")
+    setSchedAt(toLocalInput(a.scheduled_at))
+    setDuration(a.duration_minutes ?? 60)
+    setService(a.service ?? "")
+  }
+
+  function clientName(id: string) {
+    return clients.find(c => c.id === id)?.name ?? id.slice(0, 8)
+  }
+
+  async function confirm() {
+    if (!selected || !schedAt) return
+    setConfirming(true); setConfirmMsg("")
+    try {
+      const updated = await apiFetch(token, `/appointments/${selected.id}/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          scheduled_at:    new Date(schedAt).toISOString(),
+          duration_minutes: duration,
+          service,
+          notify_customer: notifyWA,
+        }),
+      })
+      setSelected(updated)
+      setAppts(prev => prev.map(a => a.id === updated.id ? updated : a))
+      setConfirmMsg(notifyWA ? "Confirmed — WhatsApp notification sent!" : "Confirmed")
+    } catch (e: any) {
+      setConfirmMsg(`Error: ${e.message}`)
+    }
+    setConfirming(false)
+  }
+
+  async function cancelAppt() {
+    if (!selected || !window.confirm("Cancel this appointment?")) return
+    const updated = await apiFetch(token, `/appointments/${selected.id}/cancel`, { method: "POST" }).catch(() => null)
+    if (updated) {
+      setSelected(updated)
+      setAppts(prev => prev.map(a => a.id === updated.id ? updated : a))
+      setConfirmMsg("Appointment cancelled")
+    }
+  }
+
+  async function markComplete() {
+    if (!selected) return
+    const updated = await apiFetch(token, `/appointments/${selected.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "completed" }),
+    }).catch(() => null)
+    if (updated) {
+      setSelected(updated)
+      setAppts(prev => prev.map(a => a.id === updated.id ? updated : a))
+    }
+  }
+
+  const filtered = appts.filter(a => {
+    const matchStatus = statusFilter === "all" || a.status === statusFilter
+    const matchClient = clientFilter === "all" || a.client_id === clientFilter
+    return matchStatus && matchClient
+  })
+
+  const pendingCount = appts.filter(a => a.status === "pending").length
+
+  return (
+    <div className="flex gap-5 h-full">
+      {/* Left: list */}
+      <div className="w-72 shrink-0 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">
+            Appointments
+            {pendingCount > 0 && (
+              <span className="ml-2 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full font-semibold">
+                {pendingCount}
+              </span>
+            )}
+          </h1>
+          <button onClick={load} className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 border border-white/5">
+            Refresh
+          </button>
+        </div>
+
+        {/* Status filters */}
+        <div className="flex gap-1 flex-wrap">
+          {["all", "pending", "confirmed", "completed", "cancelled"].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={`px-2 py-0.5 rounded text-xs capitalize transition ${
+                statusFilter === s ? "bg-sky-500 text-white" : "bg-slate-800 border border-white/10 text-slate-400 hover:text-white"}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {clients.length > 0 && (
+          <select className="bg-slate-800 text-white rounded-lg px-3 py-1.5 text-sm border border-white/5"
+            value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
+            <option value="all">All clients</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+
+        {/* List */}
+        <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+          {loading ? (
+            <p className="text-slate-500 text-sm text-center py-8">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">No appointments</p>
+          ) : filtered.map(a => (
+            <button key={a.id} onClick={() => select(a)}
+              className={`text-left px-3 py-2.5 rounded-xl border transition ${
+                selected?.id === a.id
+                  ? "bg-sky-500/10 border-sky-500/40"
+                  : a.status === "pending"
+                    ? "bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10"
+                    : "bg-slate-800 border-white/5 hover:bg-slate-700"}`}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-white text-sm font-medium truncate">
+                  {a.customer_name || a.phone_number || "Unknown"}
+                </p>
+                <span className={`text-xs px-1.5 py-0.5 rounded capitalize whitespace-nowrap ${APPT_STATUS_STYLE[a.status] ?? APPT_STATUS_STYLE.pending}`}>
+                  {a.status}
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs truncate">{a.service || "No service specified"}</p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                {a.scheduled_at
+                  ? new Date(a.scheduled_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+                  : a.requested_at_text || "Time not set"}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: detail + confirm form */}
+      <div className="flex-1 overflow-y-auto">
+        {selected ? (
+          <div className="flex flex-col gap-4 max-w-xl">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {selected.customer_name || selected.phone_number || "Unknown customer"}
+                </h2>
+                <p className="text-slate-400 text-sm">{clientName(selected.client_id)}</p>
+              </div>
+              <span className={`text-sm px-3 py-1 rounded-lg capitalize font-medium ${APPT_STATUS_STYLE[selected.status] ?? APPT_STATUS_STYLE.pending}`}>
+                {selected.status}
+              </span>
+            </div>
+
+            {/* Customer message */}
+            {selected.notes && (
+              <div className="bg-slate-800 rounded-xl p-4 border border-white/5">
+                <p className="text-xs text-slate-400 mb-2">Customer message</p>
+                <p className="text-white text-sm whitespace-pre-wrap">{selected.notes}</p>
+                {selected.requested_at_text && (
+                  <p className="text-amber-400 text-xs mt-2">
+                    Requested: <span className="text-white">{selected.requested_at_text}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Confirm / edit form */}
+            {selected.status !== "cancelled" && (
+              <div className="bg-slate-800 rounded-xl p-5 border border-white/5 flex flex-col gap-4">
+                <p className="text-sm font-semibold text-white">
+                  {selected.status === "pending" ? "Confirm Appointment" : "Edit Appointment"}
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Date & Time</p>
+                    <input
+                      type="datetime-local"
+                      className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-sky-500"
+                      value={schedAt}
+                      onChange={e => setSchedAt(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Duration</p>
+                    <select
+                      className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full"
+                      value={duration}
+                      onChange={e => setDuration(Number(e.target.value))}
+                    >
+                      {[15, 30, 45, 60, 90, 120].map(m => (
+                        <option key={m} value={m}>{m} min</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400 mb-1">Service</p>
+                  <input
+                    className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-sky-500"
+                    placeholder="e.g. Haircut, Dental checkup, Consultation"
+                    value={service}
+                    onChange={e => setService(e.target.value)}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyWA}
+                    onChange={e => setNotifyWA(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-slate-300">Send WhatsApp confirmation to customer</span>
+                </label>
+
+                {confirmMsg && (
+                  <p className={`text-sm ${confirmMsg.startsWith("Error") ? "text-red-400" : "text-green-400"}`}>
+                    {confirmMsg}
+                  </p>
+                )}
+
+                <div className="flex gap-2">
+                  <button onClick={confirm} disabled={confirming || !schedAt}
+                    className="flex-1 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-lg py-2 text-sm font-semibold transition">
+                    {confirming ? "Confirming…" : selected.status === "pending" ? "Confirm" : "Update"}
+                  </button>
+                  {selected.status === "confirmed" && (
+                    <button onClick={markComplete}
+                      className="bg-green-600 hover:bg-green-500 text-white rounded-lg px-4 py-2 text-sm font-semibold transition">
+                      Done
+                    </button>
+                  )}
+                  {selected.status !== "cancelled" && (
+                    <button onClick={cancelAppt}
+                      className="bg-slate-700 hover:bg-slate-600 text-red-400 rounded-lg px-4 py-2 text-sm transition">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Google Calendar + details */}
+            <div className="bg-slate-800 rounded-xl p-4 border border-white/5 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Phone</p>
+                <p className="text-white text-sm">{selected.phone_number || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Duration</p>
+                <p className="text-white text-sm">{selected.duration_minutes} min</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Google Calendar</p>
+                <p className={`text-xs font-mono ${selected.google_event_id ? "text-green-400" : "text-slate-600"}`}>
+                  {selected.google_event_id ? "Synced ✓" : "Not synced"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Reminder sent</p>
+                <p className={`text-xs ${selected.reminder_sent ? "text-green-400" : "text-slate-600"}`}>
+                  {selected.reminder_sent ? "Yes ✓" : "Not yet"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Received</p>
+                <p className="text-slate-300 text-xs">{new Date(selected.created_at).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+            {pendingCount > 0
+              ? `${pendingCount} pending appointment${pendingCount > 1 ? "s" : ""} waiting for confirmation`
+              : "Select an appointment to view details"}
+          </div>
         )}
       </div>
     </div>
@@ -1247,8 +1587,9 @@ export default function Dashboard() {
         {tab === "clients"   && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
         {tab === "jobs"      && <JobsTab token={token} clients={clients} />}
         {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}
-        {tab === "contacts"  && <ContactsTab token={token} clients={clients} />}
-        {tab === "team"      && user.role === "owner" && <TeamTab token={token} />}
+        {tab === "contacts"     && <ContactsTab token={token} clients={clients} />}
+        {tab === "appointments" && <AppointmentsTab token={token} clients={clients} />}
+        {tab === "team"         && user.role === "owner" && <TeamTab token={token} />}
       </main>
     </div>
   )

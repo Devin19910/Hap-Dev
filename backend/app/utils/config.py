@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     zoho_refresh_token: str = ""
     # n8n webhook URL to call when a new CRM contact is created
     n8n_new_lead_webhook: str = ""
+    # n8n webhook URL to trigger when an appointment is confirmed (starts the 24h reminder timer)
+    n8n_appointment_webhook: str = ""
+    # Google Calendar (OAuth2 refresh token — use OAuth Playground to generate)
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_refresh_token: str = ""
+    google_calendar_id: str = "primary"
+    google_timezone: str = "Asia/Kolkata"
 
     @property
     def effective_jwt_secret(self) -> str:

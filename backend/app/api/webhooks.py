@@ -11,6 +11,7 @@ from ..models.subscription import Subscription
 from ..services import ai_router as ai_service
 from ..services.whatsapp_service import send_message, parse_inbound
 from ..services import crm_service
+from ..services import appointment_service
 from ..utils.config import settings
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -101,6 +102,17 @@ async def whatsapp_message(request: Request, db: Session = Depends(get_db)):
         source="whatsapp",
     ))
 
+    if triage.get("intent") == "booking":
+        asyncio.create_task(appointment_service.create_pending(
+            db=db,
+            client_id=client_id or "",
+            phone=phone,
+            customer_name=display_name,
+            notes=message,
+            requested_at_text=triage.get("requested_time", ""),
+            service=triage.get("service_type", ""),
+        ))
+
     return {"status": "ok"}
 
 
@@ -118,11 +130,13 @@ Respond with a JSON object only (no markdown, no explanation):
   "language": "en|hi|pa|other",
   "suggested_action": "book_appointment|escalate_to_human|send_pricing|auto_reply",
   "summary": "one sentence summary",
+  "requested_time": "extracted date/time if mentioned, else empty string",
+  "service_type": "type of service requested if mentioned (e.g. haircut, consultation), else empty string",
   "reply": "your friendly 1-2 sentence WhatsApp reply to the customer"
 }}
 
 Reply rules: match the customer language, be warm, keep it under 160 chars.
-For emergencies say someone will call them. For bookings ask for date/time preference."""
+For emergencies say someone will call them. For bookings ask for date/time preference if not already given."""
 
 
 def _parse_triage(text: str) -> dict:
