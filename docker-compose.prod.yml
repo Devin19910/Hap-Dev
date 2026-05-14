@@ -1,0 +1,67 @@
+version: '3.9'
+
+# Production stack — run from repo root:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites: .env file at repo root with all variables filled in.
+# See .env.example for the full list.
+
+services:
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://nexora:${DB_PASSWORD}@postgres:5432/nexora
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: nexora
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: nexora
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexora -d nexora"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Postgres is NOT exposed externally — only reachable inside Docker network
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    env_file: .env
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      GENERIC_TIMEZONE: ${TIMEZONE:-Asia/Kolkata}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  n8n_data:
