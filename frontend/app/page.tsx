@@ -231,7 +231,7 @@ export default function Home() {
               Nexora is pre-configured for the way each business type actually operates.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
             {INDUSTRIES.map((ind) => (
               <div key={ind.name}
                 className="bg-slate-800/60 border border-white/10 rounded-2xl p-6 hover:border-brand-500/40 hover:bg-slate-800 transition">
