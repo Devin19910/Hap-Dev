@@ -1,33 +1,41 @@
 # Third-Party Integrations
 
-## Planned Integrations
+## Built and Active
 
-### WhatsApp Business API
-- Provider: Meta (via Twilio or direct)
-- Use: AI-powered customer support, appointment booking, lead handling
-- Webhook: `POST /webhooks/whatsapp/message`
-- Setup guide: `docs/setup/whatsapp_setup.md`
+### WhatsApp Cloud API (Meta)
+- Receive and send messages via Meta Graph API v19.0
+- Global webhook: `GET/POST /webhooks/whatsapp`
+- Per-tenant webhook: `GET/POST /webhooks/whatsapp/{tenant_id}`
+- Setup guide: `sops/whatsapp_setup.md`
 
-### Calendly / Cal.com
-- Use: Appointment booking automation
-- Webhook: `POST /webhooks/calendly/booking`
+### HubSpot CRM
+- Sync contacts via Private App token
+- Triggered automatically when a new WhatsApp contact is captured
+- Per-tenant credential in Settings tab; falls back to global `HUBSPOT_API_KEY`
+- Setup guide: `sops/crm_setup.md`
 
-### Stripe
-- Use: Subscription billing for SaaS clients
-- Webhook: `POST /webhooks/stripe/payment`
+### Zoho CRM
+- Sync leads via OAuth2 refresh token
+- Triggered automatically when a new WhatsApp contact is captured
+- Per-tenant credential in Settings tab; falls back to global `ZOHO_*` env vars
+- Setup guide: `sops/crm_setup.md`
 
-### Google Sheets / Drive
-- Use: Client data export, report generation
+### Google Calendar
+- Create/update/delete events on appointment confirmation
+- Per-tenant credential in Settings tab; falls back to global `GOOGLE_*` env vars
+- Setup guide: `sops/appointment_booking_setup.md`
 
-### Twilio SMS
-- Use: SMS notifications, OTP, alerts
+### n8n (self-hosted)
+- CRM new lead webhook: `http://n8n:5678/webhook/crm-new-lead`
+- Appointment reminder webhook: `http://n8n:5678/webhook/appointment-confirmed`
+- Setup guide: `sops/n8n_workflow_setup.md`
 
-### Notion API
-- Use: SOP management, client project tracking
+---
 
-## How to Add an Integration
-1. Add the API client to `backend/app/services/`
-2. Add credentials to `.env` and `.env.example`
-3. Add webhook handler if needed
-4. Write a setup doc in `docs/setup/`
-5. Write an SOP in `sops/`
+## Planned
+
+| Integration | Use case |
+|---|---|
+| Stripe | Subscription billing — automate Free → Basic → Pro upgrades |
+| SendGrid / Resend | Appointment confirmation emails |
+| React Native app | Mobile dashboard for the India operator |

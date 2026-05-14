@@ -51,7 +51,7 @@ npm run dev        # starts at http://localhost:3000
 | Field | Value |
 |---|---|
 | **Login URL** | http://localhost:3000/login |
-| **Email** | devinder.gill@empyreansolutions.com |
+| **Email** | sodhi.398@gmail.com |
 | **Password** | Changeme123! |
 | **Role** | owner (full access) |
 
@@ -60,8 +60,8 @@ npm run dev        # starts at http://localhost:3000
 | Field | Value |
 |---|---|
 | **URL** | http://localhost:5678 |
-| **Username** | admin |
-| **Password** | changeme ← **change this in .env** |
+| **Email** | sodhi.398@gmail.com |
+| **Password** | Changeme123! ← **change this before going live** |
 
 ### Two Terminals to Keep Open
 
@@ -81,7 +81,7 @@ npm run dev        # starts at http://localhost:3000
 | Admin account created | ✅ Done | — |
 | Run frontend dev server | ❌ To do | §1 |
 | Fix weak secrets in .env | ❌ To do | §2 |
-| n8n first login + workflow import | ❌ To do | §3 |
+| n8n login + 3 workflows active | ✅ Done | §3 |
 | Vercel frontend deployment | ❌ To do | §4 |
 | Home server (laptop) setup | ❌ To do | §5 |
 | Cloudflare Tunnel (public backend URL) | ❌ To do | §6 |
@@ -154,57 +154,30 @@ cd docker && docker compose up -d --force-recreate backend
 
 ---
 
-## §3 — n8n First Login and Workflow Import
+## §3 — n8n Login and Workflow Setup ✅ DONE
 
-n8n is your automation engine. It sends CRM notifications and appointment reminders.
-It's running but nothing is configured yet.
+n8n is your automation engine for CRM notifications and appointment reminders.
+**This section is already complete** — all 3 workflows were imported and activated programmatically.
 
-### 3.1 — First Login
+### Current state:
+- ✅ n8n owner account: `sodhi.398@gmail.com` / `Changeme123!`
+- ✅ `CRM New Lead Notification` workflow — Active (webhook: `/webhook/crm-new-lead`)
+- ✅ `Appointment Reminder` workflow — Active (webhook: `/webhook/appointment-confirmed`)
+- ✅ `AI Triage Workflow` — Active (webhook: `/webhook/ai-triage`)
+- ✅ Webhook URLs set in `.env` as `N8N_NEW_LEAD_WEBHOOK` and `N8N_APPOINTMENT_WEBHOOK`
 
-1. Go to **http://localhost:5678**
-2. Log in:
-   - **Email/Username:** admin
-   - **Password:** changeme (or whatever you just set in §2)
-3. n8n will ask you to set up an owner account on first visit — fill it in with your real email
+### If you ever need to re-import a workflow:
+1. Go to **http://localhost:5678** and log in
+2. Click **+** → **Import from file**
+3. Select the JSON from `automation/n8n/`
+4. Toggle the workflow **Active**
 
-### 3.2 — Import the Workflow Templates
-
-You have 3 pre-built workflow files in `automation/n8n/`:
-
-1. In n8n, click the **+** button (top right) → **Import from file**
-2. Import each of these files one by one:
-   - `automation/n8n/crm_new_lead_workflow.json` — fires when a new contact is captured from WhatsApp
-   - `automation/n8n/appointment_reminder_workflow.json` — sends a WhatsApp reminder 24h before a booking
-   - `automation/n8n/ai_triage_workflow.json` — AI triage pipeline (optional, backend handles this too)
-
-3. After importing each workflow:
-   - Click into the workflow
-   - Click the **Active** toggle (top right) to turn it on
-   - Note the webhook URL shown in the Webhook node (copy it)
-
-### 3.3 — Copy Webhook URLs into .env
-
-After activating the workflows, get the webhook URLs and update `.env`:
-
-```bash
-nano /home/exit/ai-automation-company-template/.env
+### If you need to re-set the webhook URLs in .env:
 ```
-
-Update these lines with the URLs shown in n8n:
+N8N_NEW_LEAD_WEBHOOK=http://n8n:5678/webhook/crm-new-lead
+N8N_APPOINTMENT_WEBHOOK=http://n8n:5678/webhook/appointment-confirmed
 ```
-N8N_NEW_LEAD_WEBHOOK=http://localhost:5678/webhook/crm-new-lead
-N8N_APPOINTMENT_WEBHOOK=http://localhost:5678/webhook/appointment-confirmed
-```
-
-Restart backend:
-```bash
-cd docker && docker compose up -d --force-recreate backend
-```
-
-**What to verify:**
-- [ ] n8n login works
-- [ ] 2–3 workflows imported and showing as Active (green toggle)
-- [ ] Webhook URLs are in .env
+Note: use `http://n8n:5678` (Docker internal hostname), not `localhost`, when the backend calls n8n.
 
 ---
 
@@ -305,7 +278,7 @@ API_SECRET_KEY=<same as your local .env>
 JWT_SECRET_KEY=<same as your local .env>
 CLAUDE_API_KEY=<your key>
 OPENAI_API_KEY=<your key>
-ADMIN_EMAIL=devinder.gill@empyreansolutions.com
+ADMIN_EMAIL=sodhi.398@gmail.com
 ADMIN_PASSWORD=<strong password>
 ```
 
@@ -563,11 +536,11 @@ docker compose -f docker-compose.prod.yml exec postgres psql -U nexora -d nexora
 docker exec -it docker-postgres-1 psql -U user -d appdb
 
 # Run SQL (replace hash with bcrypt of new password)
-UPDATE admin_users SET hashed_password = '<bcrypt hash>' WHERE email = 'devinder.gill@empyreansolutions.com';
+UPDATE admin_users SET hashed_password = '<bcrypt hash>' WHERE email = 'sodhi.398@gmail.com';
 
 # Or just use the API (easier):
 curl -X POST http://localhost:8000/auth/token \
-  -d "username=devinder.gill@empyreansolutions.com&password=Changeme123!"
+  -d "username=sodhi.398@gmail.com&password=Changeme123!"
 ```
 
 ---

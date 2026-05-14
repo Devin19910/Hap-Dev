@@ -258,19 +258,19 @@ All in `/sops/` — written so the India operator can follow them independently 
 
 ### What is live and running
 - ✅ Local backend running at http://localhost:8000 (Docker Compose)
-- ✅ n8n running at http://localhost:5678 (Docker Compose)
+- ✅ n8n running at http://localhost:5678 — all 3 workflows imported and active
 - ✅ All API keys set (Claude, OpenAI, Gemini)
-- ✅ Admin account exists: devinder.gill@empyreansolutions.com
+- ✅ Admin account: sodhi.398@gmail.com (personal email — this is a personal project)
 - ✅ Code pushed to GitHub: github.com/Devin19910/Hap-Dev
+- ✅ All documentation updated (README, SOPs, automation READMEs)
 
 ### What still needs to be done manually
 - ❌ Frontend dev server not started yet (`npm run dev`)
-- ❌ n8n not configured — first login not done, workflows not imported
 - ❌ Vercel not connected to the GitHub repo yet
 - ❌ Home server (spare laptop) not set up yet
 - ❌ Cloudflare Tunnel not set up yet
 - ❌ WhatsApp Meta developer app not created yet
-- ❌ Weak secrets in .env not replaced yet (JWT_SECRET_KEY, API_SECRET_KEY)
+- ❌ Weak secrets in .env not replaced yet (JWT_SECRET_KEY, API_SECRET_KEY, N8N_PASSWORD)
 
 ---
 

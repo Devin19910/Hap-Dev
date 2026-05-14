@@ -1,22 +1,25 @@
 # SOP: Client Onboarding
 
-**Who does this:** India operator  
+**Who does this:** India operator
 **When:** Every time a new paying client signs up
 
 ## Steps
 
-1. Collect client name, email, and chosen plan (free / basic / pro)
-2. Open the Operator Dashboard at your deployment URL
-3. In the sidebar, fill in Name, Email, and select the Tier
-4. Click **Create** — the system creates the client and assigns them an API key
-5. Copy the API key shown and send it to the client via email
-6. Add the client to Notion under "Active Clients" with their plan and start date
-7. Send the welcome email template (see Notion > Templates > Welcome Email)
+1. Collect client name, email, business type, and chosen plan (free / basic / pro)
+2. Have the client self-register at `/register` — OR — create the account manually:
+   - Open the dashboard at your deployment URL and log in with your platform admin email + password
+   - Go to **Clients** tab → **Create Client**
+3. Set up their integrations from the **Tenants** tab (WhatsApp, HubSpot/Zoho, Google Calendar)
+4. Send a test WhatsApp message to verify the AI is responding
+5. Confirm contact appears in the CRM (**Contacts** tab)
+
+For the full step-by-step guide, see `sops/new_client_setup.md`.
 
 ## Troubleshooting
-- "Email already registered" → client exists, check Active Clients in Notion
+- "Email already registered" → check Tenants tab first; client may already exist
 - "Invalid tier" → only use: free, basic, pro (all lowercase)
+- AI not responding → check backend logs: `docker compose logs backend -f`
 
 ## Notes
-- Never share the internal API_SECRET_KEY with clients — they get their own client API key
-- Free tier is 50 requests/month; upgrade via Dashboard > Subscriptions if they ask for more
+- Never share the internal `API_SECRET_KEY` with clients — they get their own scoped API key
+- Free tier is 50 requests/month; upgrade via the Clients tab if they ask for more

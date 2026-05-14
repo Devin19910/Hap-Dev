@@ -5,7 +5,7 @@
 
 ## Decision
 - Backend: FastAPI (Python) with SQLAlchemy + PostgreSQL
-- Frontend: Next.js 14 (React) deployed to Vercel
+- Frontend: Next.js 16 (React, App Router) deployed to Vercel
 - AI: Multi-provider via OpenAI, Anthropic Claude, Google Gemini
 - Infra: Docker Compose locally, Vercel for frontend
 

@@ -3,7 +3,7 @@
 # Usage: bash scripts/test_triage_workflow.sh
 
 N8N_WEBHOOK="http://localhost:5678/webhook/ai-triage"
-# n8n login: devinder.gill@empyreansolutions.com / Changeme123!
+# n8n login: sodhi.398@gmail.com / Changeme123!
 CLIENT_ID="bc6ffd63-a212-4f9e-832f-ccd4b5689f39"
 
 echo "=========================================="
