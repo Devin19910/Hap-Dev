@@ -15,10 +15,12 @@ Keep this handy. Everything you need day-to-day.
 
 | Service | URL | Status |
 |---|---|---|
-| **Backend API** | http://localhost:8000 | ✅ Running (local) |
+| **Backend API (local dev)** | http://localhost:8000 | ✅ Running (local) |
+| **Backend API (production)** | http://172.30.25.69:8000 | ✅ Running on home server |
 | **API Docs (Swagger)** | http://localhost:8000/docs | ✅ Running (local) |
 | **PostgreSQL** | localhost:5432 | ✅ Running (internal) |
-| **n8n Automation** | http://localhost:5678 | ✅ Running (local) |
+| **n8n (local dev)** | http://localhost:5678 | ✅ Running (local) |
+| **n8n (production)** | http://172.30.25.69:5678 | ✅ Running on home server |
 | **Frontend (Vercel — live)** | https://hap-dev.vercel.app | ✅ Live |
 | **Frontend (dev server)** | http://localhost:3000 | run `npm run dev` |
 
@@ -60,9 +62,11 @@ npm run dev        # starts at http://localhost:3000
 
 | Field | Value |
 |---|---|
-| **URL** | http://localhost:5678 |
+| **URL (local dev)** | http://localhost:5678 |
+| **URL (production)** | http://172.30.25.69:5678 |
 | **Email** | sodhi.398@gmail.com |
-| **Password** | Changeme123! ← **change this before going live** |
+| **Password (local dev)** | Changeme123! |
+| **Password (production)** | c6df9f31451b1196 |
 
 ### Two Terminals to Keep Open
 
@@ -84,7 +88,7 @@ npm run dev        # starts at http://localhost:3000
 | Fix weak secrets in .env | ❌ To do | §2 |
 | n8n login + 3 workflows active | ✅ Done | §3 |
 | Vercel frontend deployment | ✅ Done — https://hap-dev.vercel.app | §4 |
-| Home server (laptop) setup | ❌ To do | §5 |
+| Home server (laptop) setup | ✅ Done — 172.30.25.69, all 3 containers running | §5 |
 | Cloudflare Tunnel (public backend URL) | ❌ To do | §6 |
 | Update Vercel with production backend URL | ❌ To do | §7 |
 | WhatsApp Meta app setup | ❌ To do | §8 |
@@ -210,71 +214,26 @@ This is the only remaining step to make the live Vercel site talk to the product
 
 Full instructions are in `sops/server_deployment.md`. Summary below.
 
-### 5.1 — Install Ubuntu 24.04 on the Laptop
+### ✅ DONE — Home Server Is Running
 
-1. Download Ubuntu Server 24.04 LTS from **ubuntu.com/download/server**
-2. Flash to USB with **Balena Etcher** (etcher.balena.io)
-3. Boot laptop from USB → install Ubuntu
-   - Set username: `nexora`
-   - Enable SSH during install
-4. After install, find the laptop's local IP:
-   ```bash
-   ip addr show | grep "inet " | grep -v 127
-   ```
-   Write it here: `192.168.___.___`
+**Server:** `nexora@nexora-server` at `172.30.25.69`
 
-### 5.2 — SSH Into the Laptop from Your Windows Machine
+All 3 containers running (as of 2026-05-14):
+- `nexora-backend-1` — Up, healthy (port 8000)
+- `nexora-postgres-1` — Up, healthy (internal only)
+- `nexora-n8n-1` — Up (port 5678)
 
+To update the server when code changes:
 ```bash
-ssh nexora@192.168.x.x
+# Type this on the server screen (or SSH if you get it working)
+cd ~/nexora && bash deploy.sh
 ```
 
-### 5.3 — Install Docker
-
+To check status:
 ```bash
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
-exit   # log out and back in
-```
-
-### 5.4 — Clone Repo and Set Up .env
-
-```bash
-sudo apt install -y git
-git clone https://github.com/Devin19910/Hap-Dev.git nexora
-cd nexora
-cp .env.example .env
-nano .env
-```
-
-Fill in `.env` with your real values (copy from your local `.env` but update DB_PASSWORD):
-```
-DB_PASSWORD=<strong random password>     # openssl rand -hex 32
-API_SECRET_KEY=<same as your local .env>
-JWT_SECRET_KEY=<same as your local .env>
-CLAUDE_API_KEY=<your key>
-OPENAI_API_KEY=<your key>
-ADMIN_EMAIL=sodhi.398@gmail.com
-ADMIN_PASSWORD=<strong password>
-```
-
-### 5.5 — Start the Production Stack
-
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-Wait 30 seconds, then verify:
-```bash
+docker compose -f docker-compose.prod.yml ps
 curl http://localhost:8000/health
-# Expected: {"status": "ok"}
 ```
-
-**What to verify:**
-- [ ] Ubuntu installed and SSH works
-- [ ] Docker installed
-- [ ] `docker compose -f docker-compose.prod.yml ps` shows all 3 services as Up
-- [ ] `curl http://localhost:8000/health` returns `{"status": "ok"}`
 
 ---
 

@@ -257,20 +257,22 @@ All in `/sops/` — written so the India operator can follow them independently 
 ## CURRENT STATE (As of May 2026)
 
 ### What is live and running
-- ✅ Local backend running at http://localhost:8000 (Docker Compose)
-- ✅ n8n running at http://localhost:5678 — all 3 workflows imported and active
+- ✅ Local backend running at http://localhost:8000 (Docker Compose dev stack)
+- ✅ Production backend running on home server at 172.30.25.69:8000 (Docker Compose prod stack)
+- ✅ Production n8n running at 172.30.25.69:5678
+- ✅ Production PostgreSQL running (internal only)
+- ✅ All 3 containers healthy on production server (nexora-backend, nexora-postgres, nexora-n8n)
+- ✅ n8n running at http://localhost:5678 — all 3 workflows imported and active (local dev)
 - ✅ All API keys set (Claude, OpenAI, Gemini)
-- ✅ Admin account: sodhi.398@gmail.com (personal email — this is a personal project)
+- ✅ Admin account: sodhi.398@gmail.com / Changeme123!
 - ✅ Code pushed to GitHub: github.com/Devin19910/Hap-Dev
 - ✅ Frontend live on Vercel: https://hap-dev.vercel.app (auto-deploys on every push to main)
-- ✅ All documentation updated (README, SOPs, automation READMEs)
 
 ### What still needs to be done manually
-- ❌ Home server (spare laptop) not set up yet
 - ❌ Cloudflare Tunnel not set up yet (needed to give backend a public URL)
-- ❌ Update Vercel `NEXT_PUBLIC_API_URL` with real backend URL (after home server is live)
+- ❌ Update Vercel `NEXT_PUBLIC_API_URL` with real backend URL (after Cloudflare Tunnel is live)
 - ❌ WhatsApp Meta developer app not created yet
-- ❌ Weak secrets in .env not replaced yet (JWT_SECRET_KEY, API_SECRET_KEY, N8N_PASSWORD)
+- ❌ Do you have a domain? Need one for Cloudflare Tunnel (api.yourdomain.com)
 
 ---
 
