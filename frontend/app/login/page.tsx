@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 
-const API = "http://localhost:8000"
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
 export default function LoginPage() {
   const [email, setEmail]       = useState("")
