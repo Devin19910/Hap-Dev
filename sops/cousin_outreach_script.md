@@ -133,6 +133,11 @@
 **हिंदी:** भाई property buyers बहुत fast move करते हैं। अगर तुरंत reply न मिले तो दूसरे agent के पास चले जाते हैं। हमारा AI 24/7 reply करता है।
 **Roman:** Paaji property buyers bahut fast move karde ne. Je turant reply na mile toh dooje agent kol chale jaande ne. Saada AI 24/7 reply karda hai.
 
+### 🍽️ Restaurant / Cafe
+**ਪੰਜਾਬੀ:** ਪਾਜੀ ਰੋਜ਼ ਕਿੰਨੇ ਲੋਕ WhatsApp ਤੇ table book ਕਰਨ ਲਈ message ਕਰਦੇ ਨੇ ਤੇ reply ਨਹੀਂ ਮਿਲਦਾ? ਸਾਡਾ AI ਤੁਰੰਤ booking confirm ਕਰਦਾ ਹੈ — menu, timing, delivery — ਸਭ handle ਕਰਦਾ ਹੈ।
+**हिंदी:** भाई रोज़ कितने लोग WhatsApp पे table book करने के लिए message करते हैं और reply नहीं मिलता? हमारा AI तुरंत booking confirm करता है — menu, timing, delivery — सब handle करता है।
+**Roman:** Paaji roz kitne lok WhatsApp te table book karan layi message karde ne te reply nahin milda? Saada AI turant booking confirm karda hai — menu, timing, delivery — sab handle karda hai.
+
 ### 🔧 Plumber / Tradesperson
 **ਪੰਜਾਬੀ:** ਪਾਜੀ emergency call ਆਵੇ ਤੇ ਤੁਸੀਂ busy ਹੋਵੋ — job lost। ਸਾਡਾ AI ਤੁਰੰਤ reply ਕਰਦਾ ਹੈ ਤੇ job details ਲੈ ਲੈਂਦਾ ਹੈ ਜਦੋਂ ਤੁਸੀਂ free ਨਹੀਂ ਹੁੰਦੇ।
 **हिंदी:** भाई emergency call आए और आप busy हो — job lost। हमारा AI तुरंत reply करता है और job details ले लेता है जब आप free नहीं होते।

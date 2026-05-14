@@ -59,6 +59,16 @@ const INDUSTRIES = [
       "Captures every lead before they call a competitor",
     ],
   },
+  {
+    name: "Restaurants & Cafes",
+    icon: "🍽️",
+    pain: "Missed reservation requests = empty tables",
+    wins: [
+      "AI takes table bookings and confirms instantly",
+      "Answers menu, hours, and delivery questions 24/7",
+      "Captures takeaway orders and walk-in inquiries",
+    ],
+  },
 ]
 
 const FEATURES = [
