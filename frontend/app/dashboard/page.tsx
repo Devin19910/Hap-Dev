@@ -7,7 +7,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
 type AdminUser = { id: string; email: string; first_name: string; last_name: string; role: string; tenant_id: string | null }
 type TenantInfo = { id: string; name: string; email: string; slug: string; status: string; business_type: string; is_active: boolean; has_whatsapp: boolean; has_hubspot: boolean; has_zoho: boolean; has_gcal: boolean; ai_provider: string; created_at: string }
-type TenantConfig = { wa_phone_number_id?: string; wa_access_token?: string; wa_verify_token?: string; wa_business_name?: string; ai_provider?: string; hubspot_api_key?: string; zoho_client_id?: string; zoho_client_secret?: string; zoho_refresh_token?: string; google_client_id?: string; google_client_secret?: string; google_refresh_token?: string; google_calendar_id?: string; google_timezone?: string; name?: string; business_type?: string }
+type TenantConfig = { wa_phone_number_id?: string; wa_access_token?: string; wa_verify_token?: string; wa_business_name?: string; ai_provider?: string; hubspot_api_key?: string; zoho_client_id?: string; zoho_client_secret?: string; zoho_refresh_token?: string; google_client_id?: string; google_client_secret?: string; google_refresh_token?: string; google_calendar_id?: string; google_timezone?: string; vapi_api_key?: string; vapi_phone_number_id?: string; name?: string; business_type?: string }
 type Client    = { id: string; name: string; email: string; api_key: string; is_active: boolean; created_at: string }
 type Sub       = { tier: string; monthly_limit: number; requests_used: number; remaining: number; is_active: boolean }
 type Job       = { id: string; client_id: string; provider: string; prompt: string; response: string | null; tokens_used: number; status: string; created_at: string }
@@ -63,7 +63,22 @@ type Conversation = {
   updated_at: string
 }
 
-type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "appointments" | "settings" | "tenants" | "team"
+type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "appointments" | "calls" | "settings" | "tenants" | "team"
+
+type CallLog = {
+  id: string
+  client_id: string
+  contact_id: string
+  phone_number: string
+  direction: string
+  status: string
+  duration_seconds: number
+  transcript: string
+  recording_url: string
+  vapi_call_id: string
+  ended_reason: string
+  created_at: string
+}
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
@@ -92,6 +107,7 @@ const NAV: { id: Tab; label: string; icon: string; platformOnly?: boolean; tenan
   { id: "whatsapp",     label: "WhatsApp",     icon: "💬" },
   { id: "contacts",     label: "Contacts",     icon: "📋" },
   { id: "appointments", label: "Appointments", icon: "📅" },
+  { id: "calls",        label: "Calls",        icon: "📞" },
   { id: "settings",     label: "Settings",     icon: "🔧" },
   { id: "tenants",      label: "Tenants",      icon: "🏢",  platformOnly: true },
   { id: "team",         label: "Team",         icon: "🔑",  platformOnly: true },
@@ -573,6 +589,8 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
         google_refresh_token: t.google_refresh_token ?? "",
         google_calendar_id:  t.google_calendar_id ?? "primary",
         google_timezone:     t.google_timezone ?? "Asia/Kolkata",
+        vapi_api_key:        t.vapi_api_key ?? "",
+        vapi_phone_number_id: t.vapi_phone_number_id ?? "",
       })
       setUsage(u)
       setLoading(false)
@@ -670,6 +688,15 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
         <Field label="Client ID" value={cfg.zoho_client_id ?? ""} onChange={set("zoho_client_id")} placeholder="1000.xxxx" />
         <Field label="Client Secret" value={cfg.zoho_client_secret ?? ""} onChange={set("zoho_client_secret")} placeholder="…" type="password" />
         <Field label="Refresh Token" value={cfg.zoho_refresh_token ?? ""} onChange={set("zoho_refresh_token")} placeholder="1000.xxxx" type="password" />
+      </Section>
+
+      {/* Vapi — AI Calling Agent (Business plan) */}
+      <Section title="AI Calling Agent (Vapi)">
+        <p className="text-xs text-slate-500 -mt-1 mb-2">
+          Required for the Business plan calling feature. Get credentials at <span className="text-sky-400">vapi.ai</span>
+        </p>
+        <Field label="Vapi API Key" value={cfg.vapi_api_key ?? ""} onChange={set("vapi_api_key")} placeholder="vapi_…" type="password" />
+        <Field label="Vapi Phone Number ID" value={cfg.vapi_phone_number_id ?? ""} onChange={set("vapi_phone_number_id")} placeholder="From Vapi dashboard → Phone Numbers" />
       </Section>
 
       {/* Google Calendar */}
@@ -1702,6 +1729,133 @@ function WhatsAppTab({ token, clients }: { token: string; clients: Client[] }) {
   )
 }
 
+// ── Calls tab ─────────────────────────────────────────────────────────────
+
+function CallsTab({ token, clients }: { token: string; clients: Client[] }) {
+  const [calls, setCalls]       = useState<CallLog[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [selected, setSelected] = useState<CallLog | null>(null)
+  const [dialing, setDialing]   = useState(false)
+  const [dialNum, setDialNum]   = useState("")
+  const [dialPurpose, setDialPurpose] = useState("")
+  const [dialErr, setDialErr]   = useState("")
+
+  useEffect(() => {
+    apiFetch(token, "/calls").then(d => { setCalls(d); setLoading(false) }).catch(() => setLoading(false))
+  }, [token])
+
+  async function makeCall() {
+    if (!dialNum || !dialPurpose) { setDialErr("Phone number and purpose are required"); return }
+    setDialing(true); setDialErr("")
+    try {
+      const log = await apiFetch(token, "/calls/outbound", {
+        method: "POST",
+        body: JSON.stringify({ phone_number: dialNum, purpose: dialPurpose }),
+      })
+      setCalls(prev => [log, ...prev])
+      setDialNum(""); setDialPurpose("")
+    } catch (e: any) {
+      setDialErr(e.message ?? "Call failed")
+    } finally {
+      setDialing(false)
+    }
+  }
+
+  const statusColor: Record<string, string> = {
+    completed:   "text-green-400",
+    "in-progress": "text-sky-400",
+    ringing:     "text-amber-400",
+    queued:      "text-slate-400",
+    failed:      "text-red-400",
+    "no-answer": "text-orange-400",
+  }
+
+  if (loading) return <p className="text-slate-500 text-sm">Loading…</p>
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-white">AI Calling Agent</h1>
+        <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full font-medium">Business Plan</span>
+      </div>
+
+      {/* Outbound call trigger */}
+      <div className="bg-slate-800 border border-white/10 rounded-2xl p-5 flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-white">Make an outbound call</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input
+            className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+            placeholder="+1 (555) 000-0000"
+            value={dialNum}
+            onChange={e => setDialNum(e.target.value)}
+          />
+          <input
+            className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+            placeholder="Purpose — e.g. appointment reminder for tomorrow at 2pm"
+            value={dialPurpose}
+            onChange={e => setDialPurpose(e.target.value)}
+          />
+        </div>
+        {dialErr && <p className="text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">{dialErr}</p>}
+        <button
+          onClick={makeCall}
+          disabled={dialing}
+          className="self-start bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl px-5 py-2 text-sm font-semibold transition"
+        >
+          {dialing ? "Calling…" : "📞 Call now"}
+        </button>
+      </div>
+
+      {/* Call log */}
+      <div className="bg-slate-800/40 border border-white/8 rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/8">
+          <h2 className="text-sm font-semibold text-white">Call history ({calls.length})</h2>
+        </div>
+        {calls.length === 0 ? (
+          <p className="text-slate-500 text-sm text-center py-10">No calls yet</p>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {calls.map(c => (
+              <div key={c.id}
+                onClick={() => setSelected(selected?.id === c.id ? null : c)}
+                className="px-5 py-3 hover:bg-slate-800/60 cursor-pointer transition"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{c.direction === "inbound" ? "📲" : "📞"}</span>
+                    <div>
+                      <p className="text-sm font-medium text-white">{c.phone_number}</p>
+                      <p className="text-xs text-slate-500 capitalize">{c.direction} · {new Date(c.created_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    {c.duration_seconds > 0 && (
+                      <span className="text-xs text-slate-400">{Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s</span>
+                    )}
+                    <span className={`text-xs font-semibold capitalize ${statusColor[c.status] ?? "text-slate-400"}`}>{c.status}</span>
+                  </div>
+                </div>
+                {selected?.id === c.id && c.transcript && (
+                  <div className="mt-3 bg-slate-900/60 rounded-xl p-4">
+                    <p className="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wide">Transcript</p>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{c.transcript}</p>
+                    {c.recording_url && (
+                      <a href={c.recording_url} target="_blank" rel="noreferrer"
+                        className="inline-block mt-3 text-xs text-sky-400 hover:text-sky-300">
+                        🎙 Listen to recording
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Team tab (owner only) ──────────────────────────────────────────────────
 
 function TeamTab({ token }: { token: string }) {
@@ -1846,6 +2000,9 @@ export default function Dashboard() {
         {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}
         {tab === "contacts"     && <ContactsTab token={token} clients={clients} />}
         {tab === "appointments" && <AppointmentsTab token={token} clients={clients} />}
+        {tab === "calls"        && <CallsTab token={token} clients={clients} />}
+        {tab === "settings"     && <SettingsTab token={token} user={user} />}
+        {tab === "tenants"      && <TenantsTab token={token} />}
         {tab === "team"         && user.role === "owner" && <TeamTab token={token} />}
       </main>
     </div>

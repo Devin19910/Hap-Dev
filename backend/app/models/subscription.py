@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
 from .base import Base
 
-TIERS = {"free": 50, "basic": 500, "pro": 5000}
+TIERS = {"free": 50, "basic": 500, "pro": 5000, "business": 99999}
 
 
 class Subscription(Base):

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     google_refresh_token: str = ""
     google_calendar_id: str = "primary"
     google_timezone: str = "Asia/Kolkata"
+    # Vapi.ai (AI Calling Agent)
+    vapi_api_key: str = ""
+    vapi_phone_number_id: str = ""
 
     @property
     def effective_jwt_secret(self) -> str:

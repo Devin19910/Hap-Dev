@@ -111,6 +111,16 @@ const PLANS = [
     cta: "Go Pro",
     highlight: false,
   },
+  {
+    name: "Business",
+    price: "$199",
+    period: "/month",
+    desc: "For businesses that need voice + WhatsApp AI.",
+    limit: "Unlimited AI replies + calling",
+    features: ["Everything in Pro", "AI phone calling agent", "Inbound call handling", "Call transcripts & recordings", "Outbound reminder calls"],
+    cta: "Go Business",
+    highlight: false,
+  },
 ]
 
 export default function Home() {
@@ -281,7 +291,7 @@ export default function Home() {
               Start free. Upgrade when you need more. Cancel anytime.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 items-start">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
             {PLANS.map((p) => (
               <div key={p.name}
                 className={`rounded-2xl p-7 flex flex-col gap-5 border ${

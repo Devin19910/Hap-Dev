@@ -25,6 +25,8 @@ class TenantConfig:
     google_refresh_token: str = ""
     google_calendar_id:   str = "primary"
     google_timezone:      str = "Asia/Kolkata"
+    vapi_api_key:         str = ""
+    vapi_phone_number_id: str = ""
 
 
 def build_tenant_config(client: Any) -> TenantConfig:
@@ -50,4 +52,6 @@ def build_tenant_config(client: Any) -> TenantConfig:
         google_refresh_token = _get("google_refresh_token", settings.google_refresh_token),
         google_calendar_id   = _get("google_calendar_id",   settings.google_calendar_id),
         google_timezone      = _get("google_timezone",      settings.google_timezone),
+        vapi_api_key         = _get("vapi_api_key",         settings.vapi_api_key),
+        vapi_phone_number_id = _get("vapi_phone_number_id", settings.vapi_phone_number_id),
     )

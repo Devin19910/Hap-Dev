@@ -44,3 +44,7 @@ class Client(Base):
     google_refresh_token = Column(String, default="")
     google_calendar_id   = Column(String, default="primary")
     google_timezone      = Column(String, default="Asia/Kolkata")
+
+    # Per-tenant Vapi (AI Calling Agent)
+    vapi_api_key         = Column(String, default="")
+    vapi_phone_number_id = Column(String, default="")

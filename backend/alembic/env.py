@@ -12,6 +12,7 @@ from app.models.admin_user import AdminUser  # noqa: F401
 from app.models.whatsapp_conversation import WhatsAppConversation  # noqa: F401
 from app.models.contact import Contact  # noqa: F401
 from app.models.appointment import Appointment  # noqa: F401
+from app.models.call_log import CallLog  # noqa: F401
 
 config = context.config
 
