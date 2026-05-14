@@ -42,11 +42,14 @@ class Settings(BaseSettings):
     vapi_api_key: str = ""
     vapi_phone_number_id: str = ""
     # Stripe billing
-    stripe_secret_key:     str = ""
-    stripe_webhook_secret: str = ""
-    stripe_price_basic:    str = ""   # price_xxx from Stripe dashboard → Products
-    stripe_price_pro:      str = ""
-    stripe_price_business: str = ""
+    stripe_secret_key:            str = ""
+    stripe_webhook_secret:        str = ""
+    stripe_price_basic:           str = ""   # monthly price IDs from Stripe dashboard
+    stripe_price_pro:             str = ""
+    stripe_price_business:        str = ""
+    stripe_price_basic_yearly:    str = ""   # annual price IDs (2 months free)
+    stripe_price_pro_yearly:      str = ""
+    stripe_price_business_yearly: str = ""
     app_url: str = "https://hap-dev.vercel.app"
 
     @property

@@ -21,7 +21,8 @@ router = APIRouter(tags=["billing"])
 
 
 class CheckoutRequest(BaseModel):
-    tier: str   # basic | pro | business
+    tier: str            # basic | pro | business
+    billing_period: str = "monthly"  # monthly | yearly
 
 
 # ── Checkout ──────────────────────────────────────────────────────────────────
@@ -34,6 +35,8 @@ def create_checkout(
 ):
     if body.tier not in ("basic", "pro", "business"):
         raise HTTPException(400, "Invalid tier. Choose: basic, pro, business")
+    if body.billing_period not in ("monthly", "yearly"):
+        raise HTTPException(400, "Invalid billing_period. Choose: monthly, yearly")
 
     if not settings.stripe_secret_key:
         raise HTTPException(503, "Stripe is not configured on this server yet.")
@@ -58,6 +61,7 @@ def create_checkout(
             tier                = body.tier,
             customer_email      = client.email,
             stripe_customer_id  = client.stripe_customer_id,
+            billing_period      = body.billing_period,
         )
     except ValueError as e:
         raise HTTPException(422, str(e))
@@ -191,8 +195,11 @@ def _handle_subscription_deleted(subscription: dict, db: Session):
 
 def _price_to_tier(price_id: str) -> str:
     mapping = {
-        settings.stripe_price_basic:    "basic",
-        settings.stripe_price_pro:      "pro",
-        settings.stripe_price_business: "business",
+        settings.stripe_price_basic:            "basic",
+        settings.stripe_price_pro:              "pro",
+        settings.stripe_price_business:         "business",
+        settings.stripe_price_basic_yearly:     "basic",
+        settings.stripe_price_pro_yearly:       "pro",
+        settings.stripe_price_business_yearly:  "business",
     }
     return mapping.get(price_id, "")

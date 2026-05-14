@@ -7,9 +7,12 @@ import stripe
 from ..utils.config import settings
 
 PRICE_MAP = {
-    "basic":    lambda: settings.stripe_price_basic,
-    "pro":      lambda: settings.stripe_price_pro,
-    "business": lambda: settings.stripe_price_business,
+    ("basic",    "monthly"): lambda: settings.stripe_price_basic,
+    ("pro",      "monthly"): lambda: settings.stripe_price_pro,
+    ("business", "monthly"): lambda: settings.stripe_price_business,
+    ("basic",    "yearly"):  lambda: settings.stripe_price_basic_yearly,
+    ("pro",      "yearly"):  lambda: settings.stripe_price_pro_yearly,
+    ("business", "yearly"):  lambda: settings.stripe_price_business_yearly,
 }
 
 
@@ -22,14 +25,20 @@ def create_checkout_session(
     tier: str,
     customer_email: str,
     stripe_customer_id: str = "",
+    billing_period: str = "monthly",
 ) -> str:
     """
-    Creates a Stripe Checkout session for the given tier.
+    Creates a Stripe Checkout session for the given tier and billing period.
     Returns the hosted checkout URL to redirect the user to.
     """
-    price_id = PRICE_MAP[tier]()
+    key = (tier, billing_period)
+    price_fn = PRICE_MAP.get(key)
+    if not price_fn:
+        raise ValueError(f"Unknown tier/period combination: {tier}/{billing_period}")
+    price_id = price_fn()
     if not price_id:
-        raise ValueError(f"STRIPE_PRICE_{tier.upper()} is not set in .env")
+        env_key = f"STRIPE_PRICE_{tier.upper()}{'_YEARLY' if billing_period == 'yearly' else ''}"
+        raise ValueError(f"{env_key} is not set in .env")
 
     params: dict = {
         "mode": "subscription",

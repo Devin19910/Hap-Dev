@@ -80,48 +80,7 @@ const FEATURES = [
   { icon: "🔌", title: "Connects to your tools", desc: "Google Calendar, HubSpot, Zoho CRM, n8n workflows. Works alongside what you already use." },
 ]
 
-const PLANS = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "/month",
-    desc: "Try Nexora with no commitment.",
-    limit: "50 AI replies / month",
-    features: ["1 WhatsApp number", "Appointment booking", "Contacts dashboard", "Community support"],
-    cta: "Start for free",
-    highlight: false,
-  },
-  {
-    name: "Basic",
-    price: "$29",
-    period: "/month",
-    desc: "For growing local businesses.",
-    limit: "500 AI replies / month",
-    features: ["Everything in Free", "HubSpot + Zoho CRM sync", "Google Calendar sync", "n8n workflow triggers", "Email support"],
-    cta: "Get Basic",
-    highlight: true,
-  },
-  {
-    name: "Pro",
-    price: "$99",
-    period: "/month",
-    desc: "For high-volume or multi-location businesses.",
-    limit: "5,000 AI replies / month",
-    features: ["Everything in Basic", "Custom AI personality", "Priority support", "Multi-location setup", "Dedicated onboarding"],
-    cta: "Go Pro",
-    highlight: false,
-  },
-  {
-    name: "Business",
-    price: "$199",
-    period: "/month",
-    desc: "For businesses that need voice + WhatsApp AI.",
-    limit: "Unlimited AI replies + calling",
-    features: ["Everything in Pro", "AI phone calling agent", "Inbound call handling", "Call transcripts & recordings", "Outbound reminder calls"],
-    cta: "Go Business",
-    highlight: false,
-  },
-]
+import PricingSection from "./components/PricingSection"
 
 export default function Home() {
   return (
@@ -283,61 +242,7 @@ export default function Home() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="bg-white/[0.02] border-y border-white/5 py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold">Simple, transparent pricing</h2>
-            <p className="mt-3 text-slate-400 text-sm">
-              Start free. Upgrade when you need more. Cancel anytime.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-            {PLANS.map((p) => (
-              <div key={p.name}
-                className={`rounded-2xl p-7 flex flex-col gap-5 border ${
-                  p.highlight
-                    ? "bg-brand-500 border-brand-500 ring-2 ring-brand-500/40"
-                    : "bg-slate-800/60 border-white/10"
-                }`}>
-                <div>
-                  <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${p.highlight ? "text-white/70" : "text-slate-400"}`}>
-                    {p.name}
-                  </p>
-                  <div className="flex items-end gap-1">
-                    <span className="text-4xl font-extrabold">{p.price}</span>
-                    <span className={`text-sm mb-1 ${p.highlight ? "text-white/70" : "text-slate-400"}`}>{p.period}</span>
-                  </div>
-                  <p className={`text-sm mt-1 ${p.highlight ? "text-white/80" : "text-slate-400"}`}>{p.desc}</p>
-                </div>
-
-                <div className={`text-xs font-semibold px-3 py-1.5 rounded-lg w-fit ${
-                  p.highlight ? "bg-white/15 text-white" : "bg-brand-500/10 text-brand-500"
-                }`}>
-                  {p.limit}
-                </div>
-
-                <ul className="flex flex-col gap-2.5 flex-1">
-                  {p.features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2 text-sm ${p.highlight ? "text-white/90" : "text-slate-300"}`}>
-                      <span className={`shrink-0 mt-0.5 ${p.highlight ? "text-white" : "text-brand-500"}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <a href="/register"
-                  className={`text-center py-3 rounded-xl font-semibold text-sm transition ${
-                    p.highlight
-                      ? "bg-white text-brand-500 hover:bg-slate-100"
-                      : "bg-brand-500 text-white hover:bg-sky-400"
-                  }`}>
-                  {p.cta}
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       {/* ── Final CTA ── */}
       <section className="max-w-3xl mx-auto px-6 py-28 text-center">

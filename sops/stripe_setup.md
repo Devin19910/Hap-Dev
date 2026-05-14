@@ -35,39 +35,50 @@ checkout page, and their plan upgrades automatically.
 
 ## STEP 2 — Create Your 3 Products
 
-You need to create one product per plan in Stripe.
+You need to create **one product per plan**. Each product gets **two prices**: monthly and annual.
 
-### Basic Plan ($29/month)
+> **Why two prices per product?** The landing page offers a yearly toggle (2 months free ≈ 17% off). Stripe tracks monthly and annual as separate price IDs on the same product.
+
+### Basic Plan
 1. Stripe Dashboard → **Product catalog** → **+ Add product**
 2. Fill in:
    - **Name:** Nexora Basic
    - **Description:** 500 AI replies/month, CRM sync, Google Calendar
+3. Add the **monthly** price:
    - **Pricing model:** Standard pricing
    - **Price:** `29.00` USD → **Monthly** (recurring)
-3. Click **Save product**
-4. Copy the **Price ID** — it looks like `price_1ABC...` — save it somewhere
+4. Click **+ Add another price** on the same product:
+   - **Price:** `24.00` USD → **Yearly** (recurring) — ($288/year, saves $60)
+5. **Save product**
+6. Copy **both Price IDs** — the monthly one (`price_xxx`) and the yearly one (`price_yyy`)
 
-### Pro Plan ($99/month)
-1. **+ Add product** again
-2. Fill in:
+### Pro Plan
+1. **+ Add product**
    - **Name:** Nexora Pro
    - **Description:** 5,000 AI replies/month, custom AI personality, priority support
-   - **Price:** `99.00` USD → Monthly
-3. Save and copy the **Price ID**
+2. Monthly price: `99.00` USD → Monthly
+3. Yearly price: `83.00` USD → Yearly ($996/year, saves $192)
+4. Save and copy both Price IDs
 
-### Business Plan ($199/month)
-1. **+ Add product** again
-2. Fill in:
+### Business Plan
+1. **+ Add product**
    - **Name:** Nexora Business
    - **Description:** Unlimited AI replies + AI calling agent (Vapi)
-   - **Price:** `199.00` USD → Monthly
-3. Save and copy the **Price ID**
+2. Monthly price: `199.00` USD → Monthly
+3. Yearly price: `166.00` USD → Yearly ($1,992/year, saves $396)
+4. Save and copy both Price IDs
 
-You should now have 3 price IDs. Write them here:
+You should now have **6 price IDs**. Write them here:
 ```
+# Monthly
 STRIPE_PRICE_BASIC=price_...
 STRIPE_PRICE_PRO=price_...
 STRIPE_PRICE_BUSINESS=price_...
+
+# Yearly (2 months free)
+STRIPE_PRICE_BASIC_YEARLY=price_...
+STRIPE_PRICE_PRO_YEARLY=price_...
+STRIPE_PRICE_BUSINESS_YEARLY=price_...
 ```
 
 ---
@@ -137,9 +148,14 @@ Add/update these lines at the bottom:
 # Stripe billing
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+# Monthly prices
 STRIPE_PRICE_BASIC=price_...
 STRIPE_PRICE_PRO=price_...
 STRIPE_PRICE_BUSINESS=price_...
+# Yearly prices (2 months free)
+STRIPE_PRICE_BASIC_YEARLY=price_...
+STRIPE_PRICE_PRO_YEARLY=price_...
+STRIPE_PRICE_BUSINESS_YEARLY=price_...
 APP_URL=https://hap-dev.vercel.app
 ```
 
@@ -234,11 +250,14 @@ The tenant hasn't completed a checkout yet — they don't have a `stripe_custome
 
 Fill this in once you've created the products:
 
-| Plan | Monthly Price | Price ID |
-|---|---|---|
-| Basic | $29/mo | `price_____________` |
-| Pro | $99/mo | `price_____________` |
-| Business | $199/mo | `price_____________` |
+| Plan | Billing | Price | Price ID |
+|---|---|---|---|
+| Basic | Monthly | $29/mo | `price_____________` |
+| Basic | Yearly | $24/mo ($288/yr) | `price_____________` |
+| Pro | Monthly | $99/mo | `price_____________` |
+| Pro | Yearly | $83/mo ($996/yr) | `price_____________` |
+| Business | Monthly | $199/mo | `price_____________` |
+| Business | Yearly | $166/mo ($1,992/yr) | `price_____________` |
 
 ---
 
