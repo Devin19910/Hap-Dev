@@ -20,7 +20,7 @@ echo "Logging into n8n..."
 LOGIN_RESP=$(curl -sf -X POST "${N8N_URL}/rest/login" \
   -H "Content-Type: application/json" \
   -c "${COOKIE_JAR}" \
-  -d "{\"email\":\"${N8N_EMAIL}\",\"password\":\"${N8N_PASSWORD}\"}")
+  -d "{\"emailOrLdapLoginId\":\"${N8N_EMAIL}\",\"password\":\"${N8N_PASSWORD}\"}")
 
 # Also try to extract API key if returned
 API_KEY=$(echo "$LOGIN_RESP" | grep -o '"apiKey":"[^"]*"' | cut -d'"' -f4 || true)

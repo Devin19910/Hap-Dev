@@ -14,7 +14,7 @@ echo "=== Raw login response ==="
 curl -v -X POST "http://localhost:5678/rest/login" \
   -H "Content-Type: application/json" \
   -c /tmp/n8n_test_cookie.txt \
-  -d '{"email":"sodhi.398@gmail.com","password":"Admin123"}' \
+  -d '{"emailOrLdapLoginId":"sodhi.398@gmail.com","password":"Admin123"}' \
   2>&1
 
 echo ""
