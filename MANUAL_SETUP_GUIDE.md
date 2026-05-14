@@ -11,15 +11,16 @@ what to click, and what to expect.
 
 Keep this handy. Everything you need day-to-day.
 
-### What Is Running Right Now (Local Dev)
+### What Is Running Right Now
 
 | Service | URL | Status |
 |---|---|---|
-| **Backend API** | http://localhost:8000 | ✅ Running |
-| **API Docs (Swagger)** | http://localhost:8000/docs | ✅ Running |
+| **Backend API** | http://localhost:8000 | ✅ Running (local) |
+| **API Docs (Swagger)** | http://localhost:8000/docs | ✅ Running (local) |
 | **PostgreSQL** | localhost:5432 | ✅ Running (internal) |
-| **n8n Automation** | http://localhost:5678 | ✅ Running |
-| **Frontend (dev server)** | http://localhost:3000 | ❌ Not started yet |
+| **n8n Automation** | http://localhost:5678 | ✅ Running (local) |
+| **Frontend (Vercel — live)** | https://hap-dev.vercel.app | ✅ Live |
+| **Frontend (dev server)** | http://localhost:3000 | run `npm run dev` |
 
 ### How to Start / Stop the Local Backend
 
@@ -82,7 +83,7 @@ npm run dev        # starts at http://localhost:3000
 | Run frontend dev server | ❌ To do | §1 |
 | Fix weak secrets in .env | ❌ To do | §2 |
 | n8n login + 3 workflows active | ✅ Done | §3 |
-| Vercel frontend deployment | ❌ To do | §4 |
+| Vercel frontend deployment | ✅ Done — https://hap-dev.vercel.app | §4 |
 | Home server (laptop) setup | ❌ To do | §5 |
 | Cloudflare Tunnel (public backend URL) | ❌ To do | §6 |
 | Update Vercel with production backend URL | ❌ To do | §7 |
@@ -181,52 +182,27 @@ Note: use `http://n8n:5678` (Docker internal hostname), not `localhost`, when th
 
 ---
 
-## §4 — Deploy Frontend to Vercel
+## §4 — Deploy Frontend to Vercel ✅ DONE
 
-Your frontend code is on GitHub. Now connect it to Vercel so it's live on the internet.
+**Live URL: https://hap-dev.vercel.app**
 
-### 4.1 — Import the Project
+Repo `Devin19910/Hap-Dev` is connected to Vercel with root directory set to `frontend`.
+Every push to `main` on GitHub automatically triggers a new Vercel build and deploy.
 
-1. Go to **https://vercel.com/new**
-2. Click **Import Git Repository**
-3. Find `Devin19910/Hap-Dev` in the list → click **Import**
+### Current state:
+- ✅ Vercel project connected to GitHub repo (root: `frontend`)
+- ✅ https://hap-dev.vercel.app — landing page live
+- ✅ https://hap-dev.vercel.app/login — login page live
+- ✅ https://hap-dev.vercel.app/register — register page live
+- ✅ https://hap-dev.vercel.app/dashboard — dashboard working
+- ⚠️ `NEXT_PUBLIC_API_URL` not yet set in Vercel — currently falls back to `http://localhost:8000`
 
-### 4.2 — Configure the Project
+### What you need to do in §7 (after home server is live):
+1. Vercel dashboard → your project → **Settings → Environment Variables**
+2. Add: `NEXT_PUBLIC_API_URL` = `https://api.yourdomain.com`
+3. Vercel → **Deployments** → Redeploy latest
 
-On the configuration screen, change ONE setting:
-
-| Setting | Value to set |
-|---|---|
-| **Root Directory** | `frontend` |
-
-Everything else (Framework: Next.js, Build Command, Output Dir) is auto-detected — leave it.
-
-### 4.3 — Add Environment Variable
-
-Scroll down to **Environment Variables** and add:
-
-| Name | Value |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` |
-
-> You'll update this to your real backend URL in §7 after the home server is live.
-> For now, `http://localhost:8000` means the deployed site talks to your local backend when
-> you're testing from your own machine.
-
-### 4.4 — Deploy
-
-Click **Deploy**. Vercel builds for ~2 minutes and gives you a URL like:
-`https://hap-dev-abc123.vercel.app`
-
-### 4.5 — Note Your Vercel URL
-
-Write it here: `https://_____________________________.vercel.app`
-
-**What to verify:**
-- [ ] Vercel build completes without errors
-- [ ] Nexora landing page loads at your Vercel URL
-- [ ] /login page loads
-- [ ] /register page loads
+This is the only remaining step to make the live Vercel site talk to the production backend.
 
 ---
 

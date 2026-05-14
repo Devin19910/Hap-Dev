@@ -457,7 +457,7 @@ Developer pushes to GitHub (main)
 
 | Service | Public URL | Exposed via |
 |---|---|---|
-| Frontend (Nexora site) | `https://nexora-xyz.vercel.app` (or custom domain) | Vercel |
+| Frontend (Nexora site) | `https://hap-dev.vercel.app` (or custom domain) | Vercel |
 | Backend API | `https://api.yourdomain.com` | Cloudflare Tunnel → localhost:8000 |
 | n8n dashboard | `https://n8n.yourdomain.com` | Cloudflare Tunnel → localhost:5678 |
 
