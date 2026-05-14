@@ -63,10 +63,10 @@ npm run dev        # starts at http://localhost:3000
 | Field | Value |
 |---|---|
 | **URL (local dev)** | http://localhost:5678 |
-| **URL (production)** | http://172.30.25.69:5678 |
+| **URL (production)** | https://nexora-n8n.cmdfleet.com |
 | **Email** | sodhi.398@gmail.com |
 | **Password (local dev)** | Changeme123! |
-| **Password (production)** | c6df9f31451b1196 |
+| **Password (production)** | Admin123 |
 
 ### Two Terminals to Keep Open
 
@@ -86,13 +86,14 @@ npm run dev        # starts at http://localhost:3000
 | Admin account created | ✅ Done | — |
 | Run frontend dev server | ❌ To do | §1 |
 | Fix weak secrets in .env | ❌ To do | §2 |
-| n8n login + 3 workflows active | ✅ Done | §3 |
+| n8n login + 3 workflows active | ✅ Done — all 3 Published on nexora-n8n.cmdfleet.com | §3 |
 | Vercel frontend deployment | ✅ Done — https://hap-dev.vercel.app | §4 |
 | Home server (laptop) setup | ✅ Done — 172.30.25.69, all 3 containers running | §5 |
 | Cloudflare Tunnel (public backend URL) | ✅ Done — https://nexora.cmdfleet.com | §6 |
 | Update Vercel with production backend URL | ✅ Done — NEXT_PUBLIC_API_URL set | §7 |
-| WhatsApp Meta app setup | ❌ To do | §8 |
-| Register first tenant (test) | ❌ To do | §9 |
+| WhatsApp Meta app setup | ⏳ App created, webhook configured — waiting Meta business verification (1-5 days) | §8 |
+| Register first tenant (test) | ✅ Done — self-service signup tested end-to-end | §9 |
+| Cousin outreach script | ✅ Done — sops/cousin_outreach_script.md (Punjabi + Hindi + Roman) | — |
 
 ---
 
@@ -162,13 +163,14 @@ cd docker && docker compose up -d --force-recreate backend
 ## §3 — n8n Login and Workflow Setup ✅ DONE
 
 n8n is your automation engine for CRM notifications and appointment reminders.
-**This section is already complete** — all 3 workflows were imported and activated programmatically.
+**This section is fully complete** — all 3 workflows imported via script and Published in the UI.
 
 ### Current state:
-- ✅ n8n owner account: `sodhi.398@gmail.com` / `Changeme123!`
-- ✅ `CRM New Lead Notification` workflow — Active (webhook: `/webhook/crm-new-lead`)
-- ✅ `Appointment Reminder` workflow — Active (webhook: `/webhook/appointment-confirmed`)
-- ✅ `AI Triage Workflow` — Active (webhook: `/webhook/ai-triage`)
+- ✅ n8n production account: `sodhi.398@gmail.com` / `Admin123`
+- ✅ Production URL: https://nexora-n8n.cmdfleet.com
+- ✅ `CRM New Lead Notification` workflow — Published ✅
+- ✅ `Appointments — 24h Reminder` workflow — Published ✅
+- ✅ `AI Triage Workflow` — Published ✅
 - ✅ Webhook URLs set in `.env` as `N8N_NEW_LEAD_WEBHOOK` and `N8N_APPOINTMENT_WEBHOOK`
 
 ### If you ever need to re-import a workflow:
@@ -339,60 +341,47 @@ Now that the backend has a public URL, tell your Vercel frontend to use it.
 
 ---
 
-## §8 — WhatsApp Setup (Meta Developer App)
+## §8 — WhatsApp Setup (Meta Developer App) ⏳ WAITING FOR META APPROVAL
 
-This lets customers message your business on WhatsApp and get AI replies.
+### Current state (as of 2026-05-14):
+- ✅ Meta app created — App ID: `2240273510040957`
+- ✅ Phone Number ID: `1091106447424755`
+- ✅ Webhook configured: `https://nexora.cmdfleet.com/webhooks/whatsapp`
+- ✅ Verify token: `nexora-verify-2026`
+- ✅ WhatsApp credentials injected into server `.env` via `whatsapp_setup.sh`
+- ✅ AI triage flow tested end-to-end via simulated webhook — working ✅
+- ✅ Business verification submitted to Meta (RRR CONNECT LLC, EIN + LLC docs)
+- ⏳ App is UNPUBLISHED — waiting for Meta business verification (1-5 business days)
+- ⏳ Phone number +1-781-354-7229 pending registration (was rate-limited — retry after 1 hour)
 
-Full guide: `sops/whatsapp_setup.md`
+### What to do when Meta approves:
+1. Go to developers.facebook.com → your app → WhatsApp → Phone Numbers
+2. Add phone number +1-781-354-7229 and complete verification
+3. Generate a permanent access token (System User method — see `sops/whatsapp_setup.md`)
+4. On the server: update `.env` with new token, run `bash deploy.sh`
+5. Publish the app in Meta dashboard
+6. Send a real WhatsApp message and verify AI replies
 
-### Quick steps:
-
-1. Go to **developers.facebook.com** → My Apps → Create App → Business
-2. Add **WhatsApp** product
-3. Get your credentials from the WhatsApp → Getting Started page:
-   - `WHATSAPP_PHONE_NUMBER_ID` = the number ID shown
-   - `WHATSAPP_ACCESS_TOKEN` = temporary token (upgrade to permanent — see SOP)
-4. Add to your `.env` on the home server:
-   ```
-   WHATSAPP_PHONE_NUMBER_ID=<your value>
-   WHATSAPP_ACCESS_TOKEN=<your value>
-   WHATSAPP_VERIFY_TOKEN=nexora-verify-2026   # you choose this string
-   ```
-5. Restart backend: `bash deploy.sh`
-6. Register the webhook in Meta dashboard:
-   - **Callback URL:** `https://api.yourdomain.com/webhooks/whatsapp`
-   - **Verify Token:** `nexora-verify-2026` (must match what you set above)
-7. Subscribe to the `messages` webhook field
-
-**What to verify:**
-- [ ] Meta webhook verification passes (green tick in Meta dashboard)
-- [ ] Send a test message to your WhatsApp number
-- [ ] Check `https://api.yourdomain.com/conversations` for the incoming message
-- [ ] The AI replies automatically over WhatsApp
+### Test client credentials (already set):
+- Client ID: `28cc6e81-4e4c-4e31-b0ef-18042ff0c9b5`
+- Verify Token: `nexora-verify-2026`
 
 ---
 
-## §9 — Register Your First Tenant (Test the Self-Service Flow)
+## §9 — Register Your First Tenant ✅ DONE
 
-This tests the complete signup → dashboard flow as a client would experience it.
+Self-service signup tested on 2026-05-14:
+- ✅ Registered "Test Salon" at https://hap-dev.vercel.app/register
+- ✅ Auto-logged in, landed on tenant-scoped dashboard
+- ✅ Correct tabs visible: Overview, Jobs, WhatsApp, Contacts, Appointments, Settings
+- ✅ Platform admin tabs (Clients, Tenants, Team) correctly hidden from tenant view
+- ✅ Role shown as `Tenant_owner` in sidebar
 
-1. Open your Vercel URL: `https://your-nexora.vercel.app/register`
-2. Fill in:
-   - Business name: `Test Salon`
-   - Business type: Salon / Barbershop
-   - Email: use a second email address (not your admin email)
-   - Password: any strong password
-3. Click **Create free account**
-4. You should be automatically logged in and see a tenant-scoped dashboard
-   (no Clients, Tenants, or Team tabs — only Overview, WhatsApp, Contacts, Appointments, Settings)
-5. Log out, then log back in at `/login` with your admin credentials
-6. Go to the **Tenants** tab — the new tenant should appear in the list
-
-**What to verify:**
-- [ ] Self-service registration works end-to-end
-- [ ] Tenant dashboard shows correct scoped tabs
-- [ ] Platform admin Tenants tab shows the new tenant
-- [ ] Tenant appears in the database
+**When onboarding real clients (cousin):**
+1. Go to **https://hap-dev.vercel.app/register**
+2. Fill in client's business name, type, email, password
+3. Dashboard is ready immediately — show them around
+4. Message Dev with their email to set up WhatsApp connection
 
 ---
 
@@ -404,10 +393,10 @@ This tests the complete signup → dashboard flow as a client would experience i
 | Anthropic | Claude AI key | console.anthropic.com | ✅ Have |
 | OpenAI | GPT-4o key | platform.openai.com | ✅ Have |
 | Google AI | Gemini key | aistudio.google.com | ✅ Have |
-| Vercel | Frontend hosting | vercel.com | ✅ Have (not connected yet) |
-| Meta/Facebook | WhatsApp Business | developers.facebook.com | ❓ Need to check |
-| Cloudflare | Tunnel + DNS | cloudflare.com | ❓ Need to check |
-| Domain registrar | yourdomain.com | namecheap.com / godaddy.com | ❓ Need to check |
+| Vercel | Frontend hosting | vercel.com | ✅ Live — https://hap-dev.vercel.app |
+| Meta/Facebook | WhatsApp Business | developers.facebook.com | ⏳ App created, awaiting verification |
+| Cloudflare | Tunnel + DNS | cloudflare.com | ✅ Tunnel live — cmdfleet.com |
+| Domain registrar | cmdfleet.com | godaddy.com | ✅ Active — NS pointing to Cloudflare |
 | HubSpot | CRM (optional) | app.hubspot.com | 🔜 Optional |
 | Zoho CRM | CRM (optional) | crm.zoho.com | 🔜 Optional |
 | Google Cloud | Google Calendar (optional) | console.cloud.google.com | 🔜 Optional |
@@ -484,9 +473,8 @@ curl -X POST http://localhost:8000/auth/token \
 
 - [ ] Change `ADMIN_PASSWORD` from `Changeme123!` to something stronger
 - [ ] Set strong `API_SECRET_KEY` and `JWT_SECRET_KEY` (see §2)
-- [ ] Change n8n password from `changeme`
 - [ ] Set a real `WEBHOOK_SECRET` (not the placeholder)
-- [ ] Add your domain to Cloudflare and set up the tunnel (§6)
-- [ ] Update Vercel `NEXT_PUBLIC_API_URL` to the real backend URL (§7)
-- [ ] Test the full WhatsApp flow with a real message (§8)
-- [ ] Import and activate n8n workflows (§3)
+- ✅ Domain added to Cloudflare, tunnel live (§6)
+- ✅ Vercel `NEXT_PUBLIC_API_URL` set to production backend (§7)
+- ⏳ Test full WhatsApp flow with real message — blocked on Meta approval (§8)
+- ✅ n8n workflows imported and Published (§3)

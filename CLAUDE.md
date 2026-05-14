@@ -252,7 +252,7 @@ internal_tools/      → Admin scripts, deployment utilities
 
 ### 12. Frontend — Nexora Landing Page ✅
 - **`/`** — full marketing page: sticky nav, hero, integration logos bar, How It Works (3 steps),
-  Industries (Salons, Clinics, Gyms, Immigration — pain points + feature wins), Features grid (6),
+  Industries (Salons, Clinics, Gyms, Immigration, Plumbers, Real Estate — pain points + feature wins), Features grid (6),
   Pricing (Free/Basic/Pro with feature lists), final CTA, footer
 - All CTAs link to `/register` (self-service flow)
 - Tailwind CSS, server component (no client-side JS on landing page)
@@ -410,12 +410,17 @@ All in `sops/` — written so the India operator can follow them independently.
 | 15 | Frontend deployed to Vercel (`NEXT_PUBLIC_API_URL` env var) | ✅ Done |
 | 16 | Production backend deployment (home server, Docker, deploy.sh) | ✅ Done |
 | 17 | Cloudflare Tunnel / Nginx internet exposure setup | ✅ Done |
-| 18 | Billing / Stripe payment integration | 🔜 Planned |
-| 19 | Email notifications (appointment confirmations) | 🔜 Planned |
-| 20 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
-| 21 | Mobile app (React Native) | 🔜 Planned |
-| 22 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
-| 23 | White-label / custom domain per tenant | 🔜 Planned |
+| 18 | n8n production workflows imported + Published | ✅ Done |
+| 19 | WhatsApp Meta app + webhook configured | ✅ Done (app awaiting Meta verification) |
+| 20 | Self-service tenant signup tested end-to-end | ✅ Done |
+| 21 | Landing page — Plumbers + Real Estate verticals added | ✅ Done |
+| 22 | Cousin Punjab outreach script (Punjabi + Hindi + Roman) | ✅ Done — sops/cousin_outreach_script.md |
+| 23 | Billing / Stripe payment integration | 🔜 Planned |
+| 24 | Email notifications (appointment confirmations) | 🔜 Planned |
+| 25 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
+| 26 | Mobile app (React Native) | 🔜 Planned |
+| 27 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
+| 28 | White-label / custom domain per tenant | 🔜 Planned |
 
 ---
 

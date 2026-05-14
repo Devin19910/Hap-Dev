@@ -113,9 +113,9 @@ These are the exact answers we gave Claude Code when it asked us questions while
 
 ### Decision 6 — Industries to Feature
 **Question:** Which industries to call out on the landing page?
-**Our answer:** Salons & Barbershops, Clinics & Dentists, Gyms & Fitness, Immigration Consultants.
+**Our answer:** Salons & Barbershops, Clinics & Dentists, Gyms & Fitness, Immigration Consultants, Plumbers & Tradespeople, Real Estate Agents.
 
-**Why:** These are the four industries our cousin can actually sell to in Punjab right now. Trucking and restaurants were left for a later marketing push.
+**Why:** Core four are industries the cousin can sell to in Punjab right now. Plumbers added because emergency call-miss is a clear pain point. Real estate added because Punjab property market is active and buyers move fast — slow replies lose deals. Trucking and restaurants left for a later push.
 
 ---
 
@@ -257,23 +257,29 @@ All in `/sops/` — written so the India operator can follow them independently 
 ## CURRENT STATE (As of May 2026)
 
 ### What is live and running
-- ✅ Local backend running at http://localhost:8000 (Docker Compose dev stack)
-- ✅ Production backend running on home server at 172.30.25.69:8000 (Docker Compose prod stack)
-- ✅ Production n8n running at 172.30.25.69:5678
+- ✅ Production backend: https://nexora.cmdfleet.com (home server, Docker Compose prod stack)
+- ✅ Production n8n: https://nexora-n8n.cmdfleet.com (all 3 workflows Published and active)
 - ✅ Production PostgreSQL running (internal only)
-- ✅ All 3 containers healthy on production server (nexora-backend, nexora-postgres, nexora-n8n)
-- ✅ Cloudflare Tunnel live — backend at https://nexora.cmdfleet.com, n8n at https://nexora-n8n.cmdfleet.com
-- ✅ Vercel frontend NEXT_PUBLIC_API_URL updated — live site talks to production backend
-- ✅ End-to-end login verified: https://hap-dev.vercel.app works with production backend
-- ✅ n8n running at http://localhost:5678 — all 3 workflows imported and active (local dev)
+- ✅ All 3 containers healthy (nexora-backend, nexora-postgres, nexora-n8n)
+- ✅ Cloudflare Tunnel live — cmdfleet.com domain, GoDaddy registrar → Cloudflare NS
+- ✅ Vercel frontend: https://hap-dev.vercel.app — auto-deploys on every push to main
+- ✅ NEXT_PUBLIC_API_URL = https://nexora.cmdfleet.com — live site talks to production backend
+- ✅ Self-service signup tested end-to-end — tenant dashboard working correctly
 - ✅ All API keys set (Claude, OpenAI, Gemini)
 - ✅ Admin account: sodhi.398@gmail.com / Changeme123!
-- ✅ Code pushed to GitHub: github.com/Devin19910/Hap-Dev
-- ✅ Frontend live on Vercel: https://hap-dev.vercel.app (auto-deploys on every push to main)
+- ✅ n8n production account: sodhi.398@gmail.com / Admin123
+- ✅ n8n workflows: CRM New Lead ✅ · Appointments 24h Reminder ✅ · AI Triage ✅
+- ✅ WhatsApp AI triage tested end-to-end via simulated webhook — full pipeline working
+- ✅ Meta app created (App ID: 2240273510040957), webhook configured
+- ✅ Code on GitHub: github.com/Devin19910/Hap-Dev
+- ✅ Industries on landing page: Salons, Clinics, Gyms, Immigration, Plumbers, Real Estate
+- ✅ Cousin outreach script written in Punjabi (Gurmukhi) + Hindi (Devanagari) + Roman
 
-### What still needs to be done manually
-- ❌ WhatsApp Meta developer app not created yet
-- ❌ Register first real client / test tenant end-to-end
+### What still needs to be done
+- ⏳ Meta business verification approval (submitted — waiting 1-5 days)
+- ⏳ After Meta approval: register phone +1-781-354-7229, generate permanent token, publish app
+- 🔜 First real paying client onboarded by cousin in Punjab
+- 🔜 Stripe billing integration
 
 ---
 
