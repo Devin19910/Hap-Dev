@@ -48,9 +48,10 @@ This is NOT a collection of scripts. It is a multi-tenant, enterprise-ready plat
 - All three are routed through `ai_router.py` — switch via `DEFAULT_AI_PROVIDER` env var
 
 ### Infrastructure
-- WSL2 (Ubuntu) on Windows 11 Pro (dev)
-- Docker Desktop
-- Future: cloud VPS or spare 32GB/1TB laptop as server
+- **Dev:** WSL2 (Ubuntu) on Windows 11 Pro + Docker Desktop
+- **Production:** Spare laptop running Ubuntu 24.04 LTS as home server
+- **Frontend hosting:** Vercel (auto-deploy from GitHub)
+- **Internet exposure:** Cloudflare Tunnel (primary) or port forwarding + DuckDNS (fallback)
 
 ---
 
@@ -81,6 +82,15 @@ automation/
   webhooks/          → Webhook handler documentation
   integrations/      → Third-party integration guides
 
+nginx/
+  nginx.conf         → Reverse proxy config (used with port-forwarding deployment)
+
+docker/
+  docker-compose.yml → Local dev stack (hot-reload, source volume mount)
+
+docker-compose.prod.yml → Production stack (built image, no volume mount, healthchecks)
+deploy.sh              → One-command update script: git pull → rebuild → restart
+
 sops/                → Standard Operating Procedures (written for the India operator)
 
 database/
@@ -101,7 +111,7 @@ internal_tools/      → Admin scripts, deployment utilities
 ### 1. Backend Foundation ✅
 - FastAPI app with CORS middleware
 - PostgreSQL via SQLAlchemy (connection pooling)
-- Docker Compose with `backend`, `db`, `n8n` services
+- Docker Compose with `backend`, `postgres`, `n8n` services
 - Health check endpoint: `GET /health`
 - Alembic auto-migration on startup (`on_startup` hook)
 - Seed admin account created on first boot if no users exist
@@ -228,21 +238,33 @@ internal_tools/      → Admin scripts, deployment utilities
 - Webhook trigger: `POST /webhooks/n8n/trigger` — accepts arbitrary payload for manual n8n triggers
 - n8n runs at `http://localhost:5678` (Docker container)
 
-### 11. Frontend — Nexora Landing Page ✅
+### 11. Production Deployment Setup ✅
+- **`backend/Dockerfile`** — production build: 2 Uvicorn workers, no `--reload`
+- **`docker/docker-compose.yml`** — dev stack: source volume mount + `--reload` command override
+- **`docker-compose.prod.yml`** — production stack run from repo root; postgres not exposed
+  externally; backend healthcheck; all services `restart: unless-stopped`
+- **`nginx/nginx.conf`** — optional reverse proxy for `api.yourdomain.com` +
+  `n8n.yourdomain.com`; WebSocket support for n8n; Certbot ACME challenge location
+- **`deploy.sh`** — `git pull` → `build backend` → `up -d` → health check wait → status print
+- **Internet exposure options:**
+  - **Cloudflare Tunnel** (primary — no port forwarding, no static IP, free HTTPS)
+  - **Port forwarding + DuckDNS + Certbot** (fallback)
+
+### 12. Frontend — Nexora Landing Page ✅
 - **`/`** — full marketing page: sticky nav, hero, integration logos bar, How It Works (3 steps),
   Industries (Salons, Clinics, Gyms, Immigration — pain points + feature wins), Features grid (6),
   Pricing (Free/Basic/Pro with feature lists), final CTA, footer
 - All CTAs link to `/register` (self-service flow)
 - Tailwind CSS, server component (no client-side JS on landing page)
 
-### 12. Frontend — Authentication Pages ✅
+### 13. Frontend — Authentication Pages ✅
 - **`/login`** — email + password → `POST /auth/token` → localStorage JWT → `/dashboard`
   Auto-redirects to `/dashboard` if JWT already stored
 - **`/register`** — business name, type, email, password → `POST /tenants/register` →
   auto-login → `/dashboard`
   Business types: general, salon, clinic, gym, immigration, trucking, restaurant, other
 
-### 13. Frontend — Admin Dashboard ✅
+### 14. Frontend — Admin Dashboard ✅
 - **`/dashboard`** — full SPA; checks JWT on load, redirects to `/login` if missing
 - **Sidebar navigation** — platform admins see all tabs; tenant admins see only their tabs
 - **Platform-admin-only tabs:** Clients, Tenants, Team
@@ -355,6 +377,7 @@ All in `sops/` — written so the India operator can follow them independently.
 | File | Covers |
 |---|---|
 | `deployment_process.md` | Docker Compose setup, starting backend + n8n, Vercel frontend deploy |
+| `server_deployment.md` | Full home-server deployment: Ubuntu setup, Docker, Cloudflare Tunnel, HTTPS, auto-restart, updating |
 | `api_key_management.md` | How to generate, rotate, and secure all API keys |
 | `whatsapp_setup.md` | Meta developer app setup, webhook registration, permanent tokens |
 | `crm_setup.md` | HubSpot Private App token, Zoho OAuth2 + refresh token generation |
@@ -384,12 +407,69 @@ All in `sops/` — written so the India operator can follow them independently.
 | 12 | Admin dashboard (full SPA with all tabs) | ✅ Done |
 | 13 | Nexora landing page (marketing site) | ✅ Done |
 | 14 | Login + Register pages | ✅ Done |
-| 15 | Billing / Stripe payment integration | 🔜 Planned |
-| 16 | Email notifications (appointment confirmations) | 🔜 Planned |
-| 17 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
-| 18 | Mobile app (React Native) | 🔜 Planned |
-| 19 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
-| 20 | White-label / custom domain per tenant | 🔜 Planned |
+| 15 | Frontend deployed to Vercel (`NEXT_PUBLIC_API_URL` env var) | ✅ Done |
+| 16 | Production backend deployment (home server, Docker, deploy.sh) | ✅ Done |
+| 17 | Cloudflare Tunnel / Nginx internet exposure setup | ✅ Done |
+| 18 | Billing / Stripe payment integration | 🔜 Planned |
+| 19 | Email notifications (appointment confirmations) | 🔜 Planned |
+| 20 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
+| 21 | Mobile app (React Native) | 🔜 Planned |
+| 22 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
+| 23 | White-label / custom domain per tenant | 🔜 Planned |
+
+---
+
+## Deployment Architecture
+
+### Environments
+
+| Environment | Frontend | Backend | Database | n8n |
+|---|---|---|---|---|
+| **Local dev** | `npm run dev` (localhost:3000) | `docker/docker-compose.yml` (localhost:8000) | Docker container (localhost:5432) | Docker container (localhost:5678) |
+| **Production** | Vercel (auto-deploy on push to main) | `docker-compose.prod.yml` on home server | Docker container (internal only) | Docker container (home server:5678) |
+
+### How Dev and Prod Docker Compose Differ
+
+| | `docker/docker-compose.yml` (dev) | `docker-compose.prod.yml` (prod) |
+|---|---|---|
+| Backend command | `uvicorn ... --reload` | `uvicorn ... --workers 2` (from Dockerfile) |
+| Source code | Volume-mounted (live reload) | Built into image (no mount) |
+| Postgres port | Exposed on 5432 | Internal only (not exposed) |
+| Backend healthcheck | No | Yes — `GET /health` every 30s |
+| DB credentials | `user / password` (dev) | `nexora / ${DB_PASSWORD}` from .env |
+
+### Deployment Flow
+
+```
+Developer pushes to GitHub (main)
+      │
+      ├── Vercel detects push → auto-builds + deploys frontend
+      │
+      └── On the home server:
+            bash deploy.sh
+              → git pull origin main
+              → docker compose build backend
+              → docker compose up -d
+              → health check
+```
+
+### Public URL Structure (Production)
+
+| Service | Public URL | Exposed via |
+|---|---|---|
+| Frontend (Nexora site) | `https://nexora-xyz.vercel.app` (or custom domain) | Vercel |
+| Backend API | `https://api.yourdomain.com` | Cloudflare Tunnel → localhost:8000 |
+| n8n dashboard | `https://n8n.yourdomain.com` | Cloudflare Tunnel → localhost:5678 |
+
+### Updating Production
+
+```bash
+# SSH into the home server, then:
+cd ~/nexora
+bash deploy.sh
+```
+
+The script handles everything: pull → build → restart → verify.
 
 ---
 
