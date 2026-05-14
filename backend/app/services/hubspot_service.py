@@ -1,27 +1,23 @@
-"""
-HubSpot CRM integration — creates/updates contacts via HubSpot API v3.
-
-Requires HUBSPOT_API_KEY in .env (a Private App token from developers.hubspot.com).
-All functions are no-ops if the key is not set.
-"""
+"""HubSpot CRM integration — creates/updates contacts via HubSpot API v3."""
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import httpx
 from ..utils.config import settings
+
+if TYPE_CHECKING:
+    from ..utils.tenant_config import TenantConfig
 
 _BASE = "https://api.hubapi.com"
 
 
-def _headers() -> dict:
-    return {
-        "Authorization": f"Bearer {settings.hubspot_api_key}",
-        "Content-Type": "application/json",
-    }
+def _headers(api_key: str) -> dict:
+    return {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
 
-async def _find_by_phone(client: httpx.AsyncClient, phone: str) -> str | None:
-    """Returns the HubSpot internal contact ID if a contact with this phone exists."""
+async def _find_by_phone(client: httpx.AsyncClient, api_key: str, phone: str) -> str | None:
     r = await client.post(
         f"{_BASE}/crm/v3/objects/contacts/search",
-        headers=_headers(),
+        headers=_headers(api_key),
         json={
             "filterGroups": [{"filters": [
                 {"propertyName": "phone", "operator": "EQ", "value": phone}
@@ -43,12 +39,11 @@ async def push_contact(
     email: str,
     intent: str,
     urgency: str,
+    cfg: "TenantConfig | None" = None,
 ) -> str | None:
-    """
-    Creates or updates a HubSpot contact.
-    Returns the HubSpot contact ID on success, None on failure or if disabled.
-    """
-    if not settings.hubspot_api_key:
+    """Creates or updates a HubSpot contact. Uses per-tenant API key if cfg is provided."""
+    api_key = (cfg.hubspot_api_key if cfg else "") or settings.hubspot_api_key
+    if not api_key:
         return None
 
     properties: dict = {
@@ -56,30 +51,26 @@ async def push_contact(
         "firstname": first_name or "",
         "lastname": last_name or "",
         "lifecyclestage": "lead",
-        "hs_lead_status": "NEW",
+        "hs_lead_status": "IN_PROGRESS" if urgency == "high" else "NEW",
     }
     if email:
         properties["email"] = email
-    if urgency == "high":
-        properties["hs_lead_status"] = "IN_PROGRESS"
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            contact_id = await _find_by_phone(client, phone)
-
+            contact_id = await _find_by_phone(client, api_key, phone)
             if contact_id:
                 r = await client.patch(
                     f"{_BASE}/crm/v3/objects/contacts/{contact_id}",
-                    headers=_headers(),
+                    headers=_headers(api_key),
                     json={"properties": properties},
                 )
             else:
                 r = await client.post(
                     f"{_BASE}/crm/v3/objects/contacts",
-                    headers=_headers(),
+                    headers=_headers(api_key),
                     json={"properties": properties},
                 )
-
             if r.status_code in (200, 201):
                 return r.json().get("id") or contact_id
     except Exception as exc:

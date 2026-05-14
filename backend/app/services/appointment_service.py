@@ -6,14 +6,19 @@ confirm()         — called by operator via dashboard; syncs to Google Calendar
 cancel()          — cancels appointment and removes Google Calendar event
 send_reminder()   — sends WhatsApp reminder to customer (called by n8n)
 """
+from __future__ import annotations
 import asyncio
 import httpx
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from sqlalchemy.orm import Session
 from ..models.appointment import Appointment
 from ..utils.config import settings
 from . import google_calendar_service
 from .whatsapp_service import send_message
+
+if TYPE_CHECKING:
+    from ..utils.tenant_config import TenantConfig
 
 
 async def create_pending(
@@ -50,6 +55,7 @@ async def confirm(
     duration_minutes: int = 60,
     service: str = "",
     notify_customer: bool = True,
+    cfg: "Optional[TenantConfig]" = None,
 ) -> Appointment:
     """
     Confirms a pending appointment.
@@ -69,7 +75,7 @@ async def confirm(
     db.refresh(appt)
 
     # Google Calendar sync in background
-    asyncio.create_task(_sync_calendar(db, appt))
+    asyncio.create_task(_sync_calendar(db, appt, cfg))
 
     # WhatsApp confirmation
     if notify_customer and appt.phone_number:
@@ -142,7 +148,11 @@ async def _notify_n8n(appt: Appointment) -> None:
         print(f"[appointments] n8n webhook failed: {exc}")
 
 
-async def _sync_calendar(db: Session, appt: Appointment) -> None:
+async def _sync_calendar(
+    db: Session,
+    appt: Appointment,
+    cfg: "Optional[TenantConfig]" = None,
+) -> None:
     if not appt.scheduled_at:
         return
 
@@ -160,6 +170,7 @@ async def _sync_calendar(db: Session, appt: Appointment) -> None:
             description=description,
             start_dt=appt.scheduled_at,
             duration_minutes=appt.duration_minutes,
+            cfg=cfg,
         )
     else:
         event_id = await google_calendar_service.create_event(
@@ -167,6 +178,7 @@ async def _sync_calendar(db: Session, appt: Appointment) -> None:
             description=description,
             start_dt=appt.scheduled_at,
             duration_minutes=appt.duration_minutes,
+            cfg=cfg,
         )
         if event_id:
             try:

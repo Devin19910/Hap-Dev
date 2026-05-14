@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -76,6 +77,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     first_name: str
+    tenant_id: Optional[str] = None
 
 
 class UserOut(BaseModel):
@@ -84,6 +86,7 @@ class UserOut(BaseModel):
     first_name: str
     last_name: str
     role: str
+    tenant_id: Optional[str] = None
     is_active: bool
     created_at: datetime
 
@@ -116,7 +119,12 @@ async def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depen
         )
 
     token = create_token({"sub": user.id, "role": user.role, "email": user.email})
-    return TokenResponse(access_token=token, role=user.role, first_name=user.first_name)
+    return TokenResponse(
+        access_token=token,
+        role=user.role,
+        first_name=user.first_name,
+        tenant_id=user.tenant_id,
+    )
 
 
 @router.get("/me", response_model=UserOut)

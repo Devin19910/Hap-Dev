@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ..models.base import get_db
 from ..models.appointment import Appointment
 from ..services import appointment_service
-from ..utils.auth import require_any_auth
+from ..utils.auth import require_any_auth, get_tenant_scope
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -41,12 +41,14 @@ class ConfirmPayload(BaseModel):
 def list_appointments(
     client_id: Optional[str] = None,
     status:    Optional[str] = None,
+    scope: Optional[str] = Depends(get_tenant_scope),
     db: Session = Depends(get_db),
     _=Depends(require_any_auth),
 ):
+    effective_id = scope or client_id
     q = db.query(Appointment)
-    if client_id:
-        q = q.filter(Appointment.client_id == client_id)
+    if effective_id:
+        q = q.filter(Appointment.client_id == effective_id)
     if status:
         q = q.filter(Appointment.status == status)
     return q.order_by(Appointment.updated_at.desc()).all()

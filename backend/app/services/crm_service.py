@@ -4,13 +4,18 @@ CRM orchestrator — upserts contacts in the internal DB and syncs to external C
 Call upsert_contact() whenever a new lead arrives (WhatsApp message, manual entry, etc.).
 External CRM pushes (HubSpot, Zoho) run as fire-and-forget background tasks.
 """
+from __future__ import annotations
 import asyncio
 import httpx
 from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 from sqlalchemy.orm import Session
 from ..models.contact import Contact
 from ..utils.config import settings
 from . import hubspot_service, zoho_service
+
+if TYPE_CHECKING:
+    from ..utils.tenant_config import TenantConfig
 
 
 async def upsert_contact(
@@ -23,6 +28,7 @@ async def upsert_contact(
     urgency: str = "",
     summary: str = "",
     source: str = "whatsapp",
+    cfg: "Optional[TenantConfig]" = None,
 ) -> Contact:
     """
     Creates or updates a contact in the internal DB, then kicks off CRM syncs.
@@ -69,12 +75,17 @@ async def upsert_contact(
     db.refresh(contact)
 
     # Fire-and-forget CRM syncs + n8n notification
-    asyncio.create_task(_sync_to_crms(db, contact, is_new))
+    asyncio.create_task(_sync_to_crms(db, contact, is_new, cfg))
 
     return contact
 
 
-async def _sync_to_crms(db: Session, contact: Contact, is_new: bool) -> None:
+async def _sync_to_crms(
+    db: Session,
+    contact: Contact,
+    is_new: bool,
+    cfg: "Optional[TenantConfig]" = None,
+) -> None:
     """Pushes to HubSpot and Zoho in parallel, saves back the external IDs."""
     hubspot_id, zoho_id = await asyncio.gather(
         hubspot_service.push_contact(
@@ -84,6 +95,7 @@ async def _sync_to_crms(db: Session, contact: Contact, is_new: bool) -> None:
             email=contact.email,
             intent=contact.last_intent,
             urgency=contact.last_urgency,
+            cfg=cfg,
         ),
         zoho_service.push_lead(
             phone=contact.phone_number,
@@ -93,6 +105,7 @@ async def _sync_to_crms(db: Session, contact: Contact, is_new: bool) -> None:
             intent=contact.last_intent,
             urgency=contact.last_urgency,
             summary=contact.last_summary,
+            cfg=cfg,
         ),
     )
 

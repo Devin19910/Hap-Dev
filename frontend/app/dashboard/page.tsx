@@ -5,7 +5,9 @@ const API = "http://localhost:8000"
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type AdminUser = { id: string; email: string; first_name: string; last_name: string; role: string }
+type AdminUser = { id: string; email: string; first_name: string; last_name: string; role: string; tenant_id: string | null }
+type TenantInfo = { id: string; name: string; email: string; slug: string; status: string; business_type: string; is_active: boolean; has_whatsapp: boolean; has_hubspot: boolean; has_zoho: boolean; has_gcal: boolean; ai_provider: string; created_at: string }
+type TenantConfig = { wa_phone_number_id?: string; wa_access_token?: string; wa_verify_token?: string; wa_business_name?: string; ai_provider?: string; hubspot_api_key?: string; zoho_client_id?: string; zoho_client_secret?: string; zoho_refresh_token?: string; google_client_id?: string; google_client_secret?: string; google_refresh_token?: string; google_calendar_id?: string; google_timezone?: string; name?: string; business_type?: string }
 type Client    = { id: string; name: string; email: string; api_key: string; is_active: boolean; created_at: string }
 type Sub       = { tier: string; monthly_limit: number; requests_used: number; remaining: number; is_active: boolean }
 type Job       = { id: string; client_id: string; provider: string; prompt: string; response: string | null; tokens_used: number; status: string; created_at: string }
@@ -61,7 +63,7 @@ type Conversation = {
   updated_at: string
 }
 
-type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "appointments" | "team"
+type Tab = "overview" | "clients" | "jobs" | "whatsapp" | "contacts" | "appointments" | "settings" | "tenants" | "team"
 
 // ── API helpers ────────────────────────────────────────────────────────────
 
@@ -145,14 +147,16 @@ function LoginScreen({ onLogin }: { onLogin: (token: string, user: AdminUser) =>
 
 // ── Sidebar ────────────────────────────────────────────────────────────────
 
-const NAV: { id: Tab; label: string; icon: string }[] = [
-  { id: "overview",  label: "Overview",   icon: "◈" },
-  { id: "clients",   label: "Clients",    icon: "👥" },
-  { id: "jobs",      label: "Jobs",       icon: "⚙" },
-  { id: "whatsapp",  label: "WhatsApp",   icon: "💬" },
+const NAV: { id: Tab; label: string; icon: string; platformOnly?: boolean; tenantOnly?: boolean }[] = [
+  { id: "overview",     label: "Overview",     icon: "◈" },
+  { id: "clients",      label: "Clients",      icon: "👥",  platformOnly: true },
+  { id: "jobs",         label: "Jobs",         icon: "⚙" },
+  { id: "whatsapp",     label: "WhatsApp",     icon: "💬" },
   { id: "contacts",     label: "Contacts",     icon: "📋" },
   { id: "appointments", label: "Appointments", icon: "📅" },
-  { id: "team",         label: "Team",         icon: "🔑" },
+  { id: "settings",     label: "Settings",     icon: "🔧" },
+  { id: "tenants",      label: "Tenants",      icon: "🏢",  platformOnly: true },
+  { id: "team",         label: "Team",         icon: "🔑",  platformOnly: true },
 ]
 
 function Sidebar({ tab, setTab, user, onLogout }: {
@@ -165,7 +169,11 @@ function Sidebar({ tab, setTab, user, onLogout }: {
         <p className="text-slate-400 text-xs mt-0.5">Operations Hub</p>
       </div>
       <nav className="flex-1 py-3 px-2 flex flex-col gap-1">
-        {NAV.filter(n => n.id !== "team" || user.role === "owner").map(n => (
+        {NAV.filter(n => {
+          const isTenant = user.tenant_id !== null && user.tenant_id !== undefined
+          if (n.platformOnly && isTenant) return false
+          return true
+        }).map(n => (
           <button
             key={n.id}
             onClick={() => setTab(n.id)}
@@ -585,6 +593,310 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Settings tab (tenant config) ──────────────────────────────────────────
+
+const AI_PROVIDERS = ["claude", "openai", "gemini"]
+const TIMEZONES    = ["Asia/Kolkata", "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC"]
+
+function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
+  const tenantId = user.tenant_id
+  const [cfg, setCfg]     = useState<TenantConfig>({})
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving]   = useState(false)
+  const [saved, setSaved]     = useState(false)
+  const [usage, setUsage]     = useState<any>(null)
+
+  useEffect(() => {
+    if (!tenantId) return
+    Promise.all([
+      apiFetch(token, `/tenants/${tenantId}`).catch(() => ({})),
+      apiFetch(token, `/tenants/${tenantId}/usage`).catch(() => null),
+    ]).then(([t, u]) => {
+      setCfg({
+        name:                t.name ?? "",
+        business_type:       t.business_type ?? "general",
+        ai_provider:         t.ai_provider ?? "",
+        wa_phone_number_id:  t.wa_phone_number_id ?? "",
+        wa_access_token:     t.wa_access_token ?? "",
+        wa_verify_token:     t.wa_verify_token ?? "",
+        wa_business_name:    t.wa_business_name ?? "",
+        hubspot_api_key:     t.hubspot_api_key ?? "",
+        zoho_client_id:      t.zoho_client_id ?? "",
+        zoho_client_secret:  t.zoho_client_secret ?? "",
+        zoho_refresh_token:  t.zoho_refresh_token ?? "",
+        google_client_id:    t.google_client_id ?? "",
+        google_client_secret: t.google_client_secret ?? "",
+        google_refresh_token: t.google_refresh_token ?? "",
+        google_calendar_id:  t.google_calendar_id ?? "primary",
+        google_timezone:     t.google_timezone ?? "Asia/Kolkata",
+      })
+      setUsage(u)
+      setLoading(false)
+    })
+  }, [token, tenantId])
+
+  const set = (key: keyof TenantConfig) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setCfg(prev => ({ ...prev, [key]: e.target.value }))
+
+  async function save() {
+    if (!tenantId) return
+    setSaving(true); setSaved(false)
+    await apiFetch(token, `/tenants/${tenantId}/config`, {
+      method: "PUT",
+      body: JSON.stringify(cfg),
+    }).catch(() => {})
+    setSaving(false); setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  if (!tenantId) return (
+    <div className="text-slate-500 text-sm">Settings are only available for tenant accounts.</div>
+  )
+
+  if (loading) return <p className="text-slate-500 text-sm">Loading…</p>
+
+  const usagePct = usage ? Math.min(100, Math.round((usage.requests_used / usage.monthly_limit) * 100)) : 0
+
+  return (
+    <div className="flex flex-col gap-6 max-w-2xl">
+      <h1 className="text-xl font-bold text-white">Settings</h1>
+
+      {/* Usage */}
+      {usage && (
+        <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-white capitalize">{usage.tier} Plan</p>
+            <span className="text-xs text-slate-400">{usage.requests_used} / {usage.monthly_limit} requests used</span>
+          </div>
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div className={`h-2 rounded-full transition-all ${usagePct > 80 ? "bg-red-500" : usagePct > 60 ? "bg-amber-500" : "bg-sky-500"}`}
+              style={{ width: `${usagePct}%` }} />
+          </div>
+          <p className="text-xs text-slate-500 mt-2">{usage.remaining} requests remaining this month</p>
+        </div>
+      )}
+
+      {/* Business info */}
+      <Section title="Business">
+        <Field label="Business name" value={cfg.name ?? ""} onChange={set("name")} />
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">Business type</label>
+          <select className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full"
+            value={cfg.business_type ?? "general"} onChange={set("business_type")}>
+            {["general","salon","clinic","gym","immigration","trucking","restaurant","other"].map(t => (
+              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+      </Section>
+
+      {/* WhatsApp */}
+      <Section title="WhatsApp Cloud API">
+        <p className="text-xs text-slate-500 -mt-1 mb-2">
+          Your webhook URL: <code className="text-sky-400">…/webhooks/whatsapp/{tenantId}</code>
+        </p>
+        <Field label="Phone Number ID" value={cfg.wa_phone_number_id ?? ""} onChange={set("wa_phone_number_id")} placeholder="From Meta developer dashboard" />
+        <Field label="Access Token" value={cfg.wa_access_token ?? ""} onChange={set("wa_access_token")} placeholder="Permanent system user token" type="password" />
+        <Field label="Verify Token" value={cfg.wa_verify_token ?? ""} onChange={set("wa_verify_token")} placeholder="Your chosen secret string" />
+        <Field label="Business Name" value={cfg.wa_business_name ?? ""} onChange={set("wa_business_name")} placeholder="Used in AI reply context" />
+      </Section>
+
+      {/* AI */}
+      <Section title="AI Provider">
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">Default provider</label>
+          <div className="flex gap-2">
+            {AI_PROVIDERS.map(p => (
+              <button key={p} onClick={() => setCfg(c => ({ ...c, ai_provider: p }))}
+                className={`px-3 py-1.5 rounded-lg text-sm capitalize font-medium transition ${cfg.ai_provider === p ? "bg-sky-500 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* HubSpot */}
+      <Section title="HubSpot CRM">
+        <Field label="API Key (Private App Token)" value={cfg.hubspot_api_key ?? ""} onChange={set("hubspot_api_key")} placeholder="pat-eu1-…" type="password" />
+      </Section>
+
+      {/* Zoho */}
+      <Section title="Zoho CRM">
+        <Field label="Client ID" value={cfg.zoho_client_id ?? ""} onChange={set("zoho_client_id")} placeholder="1000.xxxx" />
+        <Field label="Client Secret" value={cfg.zoho_client_secret ?? ""} onChange={set("zoho_client_secret")} placeholder="…" type="password" />
+        <Field label="Refresh Token" value={cfg.zoho_refresh_token ?? ""} onChange={set("zoho_refresh_token")} placeholder="1000.xxxx" type="password" />
+      </Section>
+
+      {/* Google Calendar */}
+      <Section title="Google Calendar">
+        <Field label="Client ID" value={cfg.google_client_id ?? ""} onChange={set("google_client_id")} placeholder="xxxx.apps.googleusercontent.com" />
+        <Field label="Client Secret" value={cfg.google_client_secret ?? ""} onChange={set("google_client_secret")} placeholder="GOCSPX-…" type="password" />
+        <Field label="Refresh Token" value={cfg.google_refresh_token ?? ""} onChange={set("google_refresh_token")} placeholder="1//…" type="password" />
+        <Field label="Calendar ID" value={cfg.google_calendar_id ?? "primary"} onChange={set("google_calendar_id")} placeholder="primary" />
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">Timezone</label>
+          <select className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full"
+            value={cfg.google_timezone ?? "Asia/Kolkata"} onChange={set("google_timezone")}>
+            {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+          </select>
+        </div>
+      </Section>
+
+      <div className="flex items-center gap-3">
+        <button onClick={save} disabled={saving}
+          className="bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-xl px-6 py-2 text-sm font-semibold transition">
+          {saving ? "Saving…" : "Save Settings"}
+        </button>
+        {saved && <span className="text-green-400 text-sm">Saved!</span>}
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-slate-800 rounded-xl p-5 border border-white/5 flex flex-col gap-3">
+      <p className="text-sm font-semibold text-white border-b border-white/10 pb-2">{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function Field({ label, value, onChange, placeholder = "", type = "text" }: {
+  label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; type?: string
+}) {
+  return (
+    <div>
+      <label className="text-xs text-slate-400 mb-1 block">{label}</label>
+      <input
+        className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-sky-500 font-mono"
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+}
+
+// ── Tenants tab (platform admin) ──────────────────────────────────────────
+
+function TenantsTab({ token }: { token: string }) {
+  const [tenants, setTenants]   = useState<TenantInfo[]>([])
+  const [selected, setSelected] = useState<TenantInfo | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [actionMsg, setActionMsg] = useState("")
+
+  useEffect(() => {
+    apiFetch(token, "/tenants").then(data => { setTenants(data); setLoading(false) }).catch(() => setLoading(false))
+  }, [token])
+
+  async function suspend(id: string) {
+    if (!window.confirm("Suspend this tenant?")) return
+    await apiFetch(token, `/tenants/${id}/suspend`, { method: "POST" }).catch(() => {})
+    setTenants(prev => prev.map(t => t.id === id ? { ...t, status: "suspended", is_active: false } : t))
+    if (selected?.id === id) setSelected(prev => prev ? { ...prev, status: "suspended", is_active: false } : null)
+    setActionMsg("Tenant suspended")
+  }
+
+  async function activate(id: string) {
+    await apiFetch(token, `/tenants/${id}/activate`, { method: "POST" }).catch(() => {})
+    setTenants(prev => prev.map(t => t.id === id ? { ...t, status: "active", is_active: true } : t))
+    if (selected?.id === id) setSelected(prev => prev ? { ...prev, status: "active", is_active: true } : null)
+    setActionMsg("Tenant activated")
+  }
+
+  return (
+    <div className="flex gap-5 h-full">
+      {/* Left: list */}
+      <div className="w-72 shrink-0 flex flex-col gap-3">
+        <h1 className="text-xl font-bold text-white">Tenants <span className="text-slate-500 text-base font-normal">({tenants.length})</span></h1>
+        <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+          {loading ? (
+            <p className="text-slate-500 text-sm text-center py-8">Loading…</p>
+          ) : tenants.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">No tenants yet</p>
+          ) : tenants.map(t => (
+            <button key={t.id} onClick={() => { setSelected(t); setActionMsg("") }}
+              className={`text-left px-3 py-2.5 rounded-xl border transition ${
+                selected?.id === t.id ? "bg-sky-500/10 border-sky-500/40"
+                : "bg-slate-800 border-white/5 hover:bg-slate-700"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-white text-sm font-medium truncate">{t.name}</p>
+                <span className={`text-xs px-1.5 py-0.5 rounded capitalize whitespace-nowrap ${t.status === "active" ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-slate-400"}`}>
+                  {t.status}
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs mt-0.5 capitalize">{t.business_type}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: detail */}
+      <div className="flex-1 overflow-y-auto">
+        {selected ? (
+          <div className="flex flex-col gap-4 max-w-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">{selected.name}</h2>
+                <p className="text-slate-400 text-sm">{selected.email} · {selected.slug}</p>
+              </div>
+              <div className="flex gap-2">
+                {selected.status === "active" ? (
+                  <button onClick={() => suspend(selected.id)}
+                    className="text-xs text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition">
+                    Suspend
+                  </button>
+                ) : (
+                  <button onClick={() => activate(selected.id)}
+                    className="text-xs text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg hover:bg-green-500/10 transition">
+                    Activate
+                  </button>
+                )}
+              </div>
+            </div>
+            {actionMsg && <p className="text-green-400 text-sm">{actionMsg}</p>}
+
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5 grid grid-cols-2 gap-4 text-sm">
+              <div><p className="text-xs text-slate-500 mb-1">Business type</p><p className="text-white capitalize">{selected.business_type}</p></div>
+              <div><p className="text-xs text-slate-500 mb-1">AI provider</p><p className="text-white capitalize">{selected.ai_provider}</p></div>
+              <div><p className="text-xs text-slate-500 mb-1">Registered</p><p className="text-slate-300 text-xs">{new Date(selected.created_at).toLocaleDateString()}</p></div>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+              <p className="text-sm font-semibold text-white mb-3">Integrations</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "WhatsApp", active: selected.has_whatsapp },
+                  { label: "HubSpot",  active: selected.has_hubspot },
+                  { label: "Zoho CRM", active: selected.has_zoho },
+                  { label: "Google Calendar", active: selected.has_gcal },
+                ].map(i => (
+                  <div key={i.label} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${i.active ? "bg-green-400" : "bg-slate-600"}`} />
+                    <span className={`text-sm ${i.active ? "text-white" : "text-slate-500"}`}>{i.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-4 border border-white/5">
+              <p className="text-xs text-slate-400 mb-1">Tenant ID</p>
+              <code className="text-xs text-amber-400 break-all">{selected.id}</code>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+            Select a tenant to view details
+          </div>
         )}
       </div>
     </div>

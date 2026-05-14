@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ..models.base import get_db
 from ..models.contact import Contact
 from ..services import crm_service
-from ..utils.auth import require_any_auth
+from ..utils.auth import require_any_auth, get_tenant_scope
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -36,12 +36,14 @@ class ContactUpdate(BaseModel):
 def list_contacts(
     client_id: Optional[str] = None,
     status: Optional[str] = None,
+    scope: Optional[str] = Depends(get_tenant_scope),
     db: Session = Depends(get_db),
     _=Depends(require_any_auth),
 ):
+    effective_id = scope or client_id
     q = db.query(Contact)
-    if client_id:
-        q = q.filter(Contact.client_id == client_id)
+    if effective_id:
+        q = q.filter(Contact.client_id == effective_id)
     if status:
         q = q.filter(Contact.status == status)
     return q.order_by(Contact.updated_at.desc()).all()

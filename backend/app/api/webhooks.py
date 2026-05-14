@@ -6,6 +6,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..models.base import get_db
+from ..models.client import Client
 from ..models.whatsapp_conversation import WhatsAppConversation
 from ..models.subscription import Subscription
 from ..services import ai_router as ai_service
@@ -13,6 +14,7 @@ from ..services.whatsapp_service import send_message, parse_inbound
 from ..services import crm_service
 from ..services import appointment_service
 from ..utils.config import settings
+from ..utils.tenant_config import build_tenant_config, TenantConfig
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -160,9 +162,13 @@ async def _send_and_log(
     reply_text: str,
     triage: dict,
     client_id: str,
+    cfg: TenantConfig | None = None,
 ):
     try:
-        await send_message(phone, reply_text)
+        wa_kwargs = {}
+        if cfg:
+            wa_kwargs = {"phone_number_id": cfg.wa_phone_number_id, "access_token": cfg.wa_access_token}
+        await send_message(phone, reply_text, **wa_kwargs)
     except Exception:
         pass
 
@@ -193,3 +199,100 @@ async def _send_and_log(
         db.commit()
     except Exception:
         pass
+
+
+# ── Per-tenant WhatsApp webhooks ────────────────────────────────────────────
+# Each tenant registers: https://yourdomain.com/webhooks/whatsapp/{tenant_id}
+# as their Meta webhook URL. This allows different businesses to have their
+# own WhatsApp numbers and credentials while sharing the same platform.
+
+@router.get("/whatsapp/{tenant_id}", response_class=PlainTextResponse)
+async def whatsapp_verify_tenant(
+    tenant_id: str,
+    hub_mode: str = Query(alias="hub.mode", default=""),
+    hub_verify_token: str = Query(alias="hub.verify_token", default=""),
+    hub_challenge: str = Query(alias="hub.challenge", default=""),
+    db: Session = Depends(get_db),
+):
+    client = db.query(Client).filter(Client.id == tenant_id, Client.is_active == True).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    verify_token = client.wa_verify_token or settings.whatsapp_verify_token
+    if hub_mode == "subscribe" and hub_verify_token == verify_token:
+        return hub_challenge
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/whatsapp/{tenant_id}")
+async def whatsapp_message_tenant(
+    tenant_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Per-tenant inbound WhatsApp handler. Uses the tenant's own credentials and AI config."""
+    client = db.query(Client).filter(Client.id == tenant_id, Client.is_active == True).first()
+    if not client:
+        return {"status": "tenant_not_found"}
+
+    cfg = build_tenant_config(client)
+    payload = await request.json()
+    parsed = parse_inbound(payload)
+    if not parsed:
+        return {"status": "ok"}
+
+    phone, message, display_name = parsed
+
+    sub = db.query(Subscription).filter(
+        Subscription.client_id == tenant_id,
+        Subscription.is_active == True,
+    ).first()
+    if sub and sub.requests_used >= sub.monthly_limit:
+        asyncio.create_task(send_message(
+            phone,
+            "Sorry, we're temporarily unavailable. Please call us directly.",
+            phone_number_id=cfg.wa_phone_number_id,
+            access_token=cfg.wa_access_token,
+        ))
+        return {"status": "limit_reached"}
+
+    prompt = _build_prompt(message, cfg.wa_business_name)
+    try:
+        result = await ai_service.run(prompt, provider=cfg.ai_provider)
+        triage = _parse_triage(result["text"])
+    except Exception as e:
+        asyncio.create_task(send_message(
+            phone,
+            "Thanks for your message! We'll get back to you shortly.",
+            phone_number_id=cfg.wa_phone_number_id,
+            access_token=cfg.wa_access_token,
+        ))
+        return {"status": "ai_error", "detail": str(e)}
+
+    reply_text = triage.get("reply", "Thanks for your message! We'll get back to you shortly.")
+
+    asyncio.create_task(_send_and_log(
+        db, phone, display_name, message, reply_text, triage, tenant_id, cfg
+    ))
+    asyncio.create_task(crm_service.upsert_contact(
+        db=db,
+        client_id=tenant_id,
+        phone=phone,
+        display_name=display_name,
+        intent=triage.get("intent", ""),
+        urgency=triage.get("urgency", ""),
+        summary=triage.get("summary", ""),
+        source="whatsapp",
+        cfg=cfg,
+    ))
+    if triage.get("intent") == "booking":
+        asyncio.create_task(appointment_service.create_pending(
+            db=db,
+            client_id=tenant_id,
+            phone=phone,
+            customer_name=display_name,
+            notes=message,
+            requested_at_text=triage.get("requested_time", ""),
+            service=triage.get("service_type", ""),
+        ))
+
+    return {"status": "ok"}
