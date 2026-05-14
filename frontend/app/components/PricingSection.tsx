@@ -1,13 +1,29 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
-const PLANS = [
+type Plan = {
+  name: string
+  monthlyPrice: string
+  yearlyPrice: string
+  yearlyTotal: string
+  savings: string
+  period: string
+  desc: string
+  limit: string
+  features: string[]
+  cta: string
+  highlight: boolean
+  inrMonthlyPrice: string
+  inrYearlyPrice: string
+  inrYearlyTotal: string
+  inrSavings: string
+}
+
+const PLANS: Plan[] = [
   {
     name: "Free",
-    monthlyPrice: "$0",
-    yearlyPrice: "$0",
-    yearlyTotal: "",
-    savings: "",
+    monthlyPrice: "$0",    yearlyPrice: "$0",    yearlyTotal: "",             savings: "",
+    inrMonthlyPrice: "₹0", inrYearlyPrice: "₹0", inrYearlyTotal: "",          inrSavings: "",
     period: "/month",
     desc: "Try Nexora with no commitment.",
     limit: "50 AI replies / month",
@@ -17,10 +33,8 @@ const PLANS = [
   },
   {
     name: "Basic",
-    monthlyPrice: "$29",
-    yearlyPrice: "$24",
-    yearlyTotal: "$288/year",
-    savings: "Save $60/year",
+    monthlyPrice: "$29",        yearlyPrice: "$24",        yearlyTotal: "$288/year",      savings: "Save $60/year",
+    inrMonthlyPrice: "₹2,499",  inrYearlyPrice: "₹1,999",  inrYearlyTotal: "₹23,988/year", inrSavings: "Save ₹5,988/year",
     period: "/month",
     desc: "For growing local businesses.",
     limit: "500 AI replies / month",
@@ -30,10 +44,8 @@ const PLANS = [
   },
   {
     name: "Pro",
-    monthlyPrice: "$99",
-    yearlyPrice: "$83",
-    yearlyTotal: "$996/year",
-    savings: "Save $192/year",
+    monthlyPrice: "$99",        yearlyPrice: "$83",        yearlyTotal: "$996/year",       savings: "Save $192/year",
+    inrMonthlyPrice: "₹8,499",  inrYearlyPrice: "₹6,999",  inrYearlyTotal: "₹83,988/year", inrSavings: "Save ₹17,988/year",
     period: "/month",
     desc: "For high-volume or multi-location businesses.",
     limit: "5,000 AI replies / month",
@@ -43,10 +55,8 @@ const PLANS = [
   },
   {
     name: "Business",
-    monthlyPrice: "$199",
-    yearlyPrice: "$166",
-    yearlyTotal: "$1,992/year",
-    savings: "Save $396/year",
+    monthlyPrice: "$199",         yearlyPrice: "$166",        yearlyTotal: "$1,992/year",       savings: "Save $396/year",
+    inrMonthlyPrice: "₹16,999",   inrYearlyPrice: "₹13,999",  inrYearlyTotal: "₹1,67,988/year", inrSavings: "Save ₹35,988/year",
     period: "/month",
     desc: "For businesses that need voice + WhatsApp AI.",
     limit: "Unlimited AI replies + calling",
@@ -58,6 +68,21 @@ const PLANS = [
 
 export default function PricingSection() {
   const [yearly, setYearly] = useState(false)
+  const [isIndia, setIsIndia] = useState(false)
+
+  useEffect(() => {
+    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+      .then((r) => r.json())
+      .then((data) => { if (data?.country_code === "IN") setIsIndia(true) })
+      .catch(() => {/* silently fall back to USD */})
+  }, [])
+
+  function price(p: Plan) {
+    if (isIndia) return yearly ? p.inrYearlyPrice : p.inrMonthlyPrice
+    return yearly ? p.yearlyPrice : p.monthlyPrice
+  }
+  function yearlyTotal(p: Plan)  { return isIndia ? p.inrYearlyTotal : p.yearlyTotal }
+  function savings(p: Plan)      { return isIndia ? p.inrSavings     : p.savings     }
 
   return (
     <section id="pricing" className="bg-white/[0.02] border-y border-white/5 py-24">
@@ -67,6 +92,12 @@ export default function PricingSection() {
           <p className="mt-3 text-slate-400 text-sm">
             Start free. Upgrade when you need more. Cancel anytime.
           </p>
+
+          {isIndia && (
+            <p className="mt-2 text-xs text-slate-500">
+              Prices shown in Indian Rupees (INR). Billing processed in USD at checkout.
+            </p>
+          )}
 
           {/* Billing toggle */}
           <div className="mt-8 inline-flex items-center gap-3 bg-slate-800/60 border border-white/10 rounded-full px-2 py-1.5">
@@ -105,21 +136,19 @@ export default function PricingSection() {
                   {p.name}
                 </p>
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-extrabold">
-                    {yearly ? p.yearlyPrice : p.monthlyPrice}
-                  </span>
+                  <span className="text-4xl font-extrabold">{price(p)}</span>
                   <span className={`text-sm mb-1 ${p.highlight ? "text-white/70" : "text-slate-400"}`}>
                     {p.period}
                   </span>
                 </div>
-                {yearly && p.yearlyTotal && (
+                {yearly && yearlyTotal(p) && (
                   <p className={`text-xs mt-1 ${p.highlight ? "text-white/60" : "text-slate-500"}`}>
-                    {p.yearlyTotal} · billed annually
+                    {yearlyTotal(p)} · billed annually
                   </p>
                 )}
-                {yearly && p.savings && (
+                {yearly && savings(p) && (
                   <span className="inline-block mt-1.5 bg-green-500/20 text-green-400 text-xs font-semibold px-2 py-0.5 rounded-full">
-                    {p.savings}
+                    {savings(p)}
                   </span>
                 )}
                 <p className={`text-sm mt-2 ${p.highlight ? "text-white/80" : "text-slate-400"}`}>{p.desc}</p>
