@@ -16,11 +16,11 @@ Keep this handy. Everything you need day-to-day.
 | Service | URL | Status |
 |---|---|---|
 | **Backend API (local dev)** | http://localhost:8000 | ✅ Running (local) |
-| **Backend API (production)** | http://172.30.25.69:8000 | ✅ Running on home server |
+| **Backend API (production)** | https://nexora.cmdfleet.com | ✅ Live — public HTTPS |
 | **API Docs (Swagger)** | http://localhost:8000/docs | ✅ Running (local) |
 | **PostgreSQL** | localhost:5432 | ✅ Running (internal) |
 | **n8n (local dev)** | http://localhost:5678 | ✅ Running (local) |
-| **n8n (production)** | http://172.30.25.69:5678 | ✅ Running on home server |
+| **n8n (production)** | https://nexora-n8n.cmdfleet.com | ✅ Live — public HTTPS |
 | **Frontend (Vercel — live)** | https://hap-dev.vercel.app | ✅ Live |
 | **Frontend (dev server)** | http://localhost:3000 | run `npm run dev` |
 
@@ -89,8 +89,8 @@ npm run dev        # starts at http://localhost:3000
 | n8n login + 3 workflows active | ✅ Done | §3 |
 | Vercel frontend deployment | ✅ Done — https://hap-dev.vercel.app | §4 |
 | Home server (laptop) setup | ✅ Done — 172.30.25.69, all 3 containers running | §5 |
-| Cloudflare Tunnel (public backend URL) | ❌ To do | §6 |
-| Update Vercel with production backend URL | ❌ To do | §7 |
+| Cloudflare Tunnel (public backend URL) | ✅ Done — https://nexora.cmdfleet.com | §6 |
+| Update Vercel with production backend URL | ✅ Done — NEXT_PUBLIC_API_URL set | §7 |
 | WhatsApp Meta app setup | ❌ To do | §8 |
 | Register first tenant (test) | ❌ To do | §9 |
 

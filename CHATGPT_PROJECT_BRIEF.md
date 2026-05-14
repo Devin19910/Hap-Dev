@@ -262,6 +262,9 @@ All in `/sops/` — written so the India operator can follow them independently 
 - ✅ Production n8n running at 172.30.25.69:5678
 - ✅ Production PostgreSQL running (internal only)
 - ✅ All 3 containers healthy on production server (nexora-backend, nexora-postgres, nexora-n8n)
+- ✅ Cloudflare Tunnel live — backend at https://nexora.cmdfleet.com, n8n at https://nexora-n8n.cmdfleet.com
+- ✅ Vercel frontend NEXT_PUBLIC_API_URL updated — live site talks to production backend
+- ✅ End-to-end login verified: https://hap-dev.vercel.app works with production backend
 - ✅ n8n running at http://localhost:5678 — all 3 workflows imported and active (local dev)
 - ✅ All API keys set (Claude, OpenAI, Gemini)
 - ✅ Admin account: sodhi.398@gmail.com / Changeme123!
@@ -269,10 +272,8 @@ All in `/sops/` — written so the India operator can follow them independently 
 - ✅ Frontend live on Vercel: https://hap-dev.vercel.app (auto-deploys on every push to main)
 
 ### What still needs to be done manually
-- ❌ Cloudflare Tunnel not set up yet (needed to give backend a public URL)
-- ❌ Update Vercel `NEXT_PUBLIC_API_URL` with real backend URL (after Cloudflare Tunnel is live)
 - ❌ WhatsApp Meta developer app not created yet
-- ❌ Do you have a domain? Need one for Cloudflare Tunnel (api.yourdomain.com)
+- ❌ Register first real client / test tenant end-to-end
 
 ---
 
