@@ -44,6 +44,7 @@ We (as platform admins) manage all tenants, see all data, and can onboard client
 - Free tier: 50 AI replies/month — lets businesses try before they commit
 - Basic: $29/month — 500 replies, CRM sync, Google Calendar
 - Pro: $99/month — 5,000 replies, custom AI personality, priority support
+- Business: $199/month — unlimited replies + AI calling agent (Vapi)
 
 ---
 
@@ -272,14 +273,16 @@ All in `/sops/` — written so the India operator can follow them independently 
 - ✅ WhatsApp AI triage tested end-to-end via simulated webhook — full pipeline working
 - ✅ Meta app created (App ID: 2240273510040957), webhook configured
 - ✅ Code on GitHub: github.com/Devin19910/Hap-Dev
-- ✅ Industries on landing page: Salons, Clinics, Gyms, Immigration, Plumbers, Real Estate
+- ✅ Industries on landing page: Salons, Clinics, Gyms, Immigration, Plumbers, Real Estate, Restaurants
 - ✅ Cousin outreach script written in Punjabi (Gurmukhi) + Hindi (Devanagari) + Roman
+- ✅ AI Calling Agent (Vapi) built and deployed — Business plan ($199/mo), Calls dashboard tab, transcripts
 
 ### What still needs to be done
 - ⏳ Meta business verification approval (submitted — waiting 1-5 days)
 - ⏳ After Meta approval: register phone +1-781-354-7229, generate permanent token, publish app
 - 🔜 First real paying client onboarded by cousin in Punjab
 - 🔜 Stripe billing integration
+- 🔜 Vapi account setup + test first AI phone call
 
 ---
 
@@ -293,6 +296,24 @@ All in `/sops/` — written so the India operator can follow them independently 
 | 4 | Analytics dashboard | Show usage trends, conversation volume, booking conversion rates |
 | 5 | Mobile app (React Native) | Cousin needs mobile access to dashboard on the go |
 | 6 | White-label / custom domain | Let agencies resell Nexora under their own brand |
+
+## CALLING AGENT (Built — May 2026)
+
+Nexora now supports an AI phone calling agent powered by **Vapi.ai** as a Business plan feature ($199/mo).
+
+**How it works:**
+- Tenant adds Vapi API key + phone number ID in Settings
+- From the Calls tab, they can dial any number with a custom purpose (e.g. appointment reminder)
+- Vapi spins up an AI agent using Claude with a business-specific prompt
+- When the call ends, Vapi sends a webhook with the full transcript and recording URL
+- All calls saved to the `call_logs` table — visible in the dashboard
+
+**Inbound calls:** configure the Vapi phone number webhook to point to `https://nexora.cmdfleet.com/webhooks/vapi`
+
+**Key files:**
+- `backend/app/services/calling_service.py` — Vapi API calls
+- `backend/app/api/calls.py` — REST endpoints + webhook handler
+- `backend/app/models/call_log.py` — call log ORM model
 
 ---
 

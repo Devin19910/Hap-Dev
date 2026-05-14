@@ -94,6 +94,7 @@ npm run dev        # starts at http://localhost:3000
 | WhatsApp Meta app setup | ⏳ App created, webhook configured — waiting Meta business verification (1-5 days) | §8 |
 | Register first tenant (test) | ✅ Done — self-service signup tested end-to-end | §9 |
 | Cousin outreach script | ✅ Done — sops/cousin_outreach_script.md (Punjabi + Hindi + Roman) | — |
+| AI Calling Agent (Vapi) | ✅ Built + deployed — Business plan ($199/mo), Calls tab in dashboard | §13 |
 
 ---
 
@@ -478,3 +479,52 @@ curl -X POST http://localhost:8000/auth/token \
 - ✅ Vercel `NEXT_PUBLIC_API_URL` set to production backend (§7)
 - ⏳ Test full WhatsApp flow with real message — blocked on Meta approval (§8)
 - ✅ n8n workflows imported and Published (§3)
+
+---
+
+## §13 — AI Calling Agent (Vapi) Setup
+
+The calling agent is built and deployed. To activate it for a tenant:
+
+### Step 1 — Create a Vapi account
+1. Go to **vapi.ai** → sign up
+2. Dashboard → **Phone Numbers** → Buy a number (~$2/month US number)
+3. Copy the **Phone Number ID**
+4. Dashboard → **API Keys** → copy your API key
+
+### Step 2 — Add credentials to tenant Settings
+1. Log in to the tenant dashboard at https://hap-dev.vercel.app
+2. Go to **Settings** → scroll to **AI Calling Agent (Vapi)**
+3. Paste the **Vapi API Key** and **Vapi Phone Number ID**
+4. Click **Save Settings**
+
+### Step 3 — Upgrade tenant to Business plan
+Currently done via API (Stripe coming later):
+```bash
+curl -X PATCH https://nexora.cmdfleet.com/subscriptions/<client_id>/upgrade \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"tier": "business"}'
+```
+
+### Step 4 — Make a test call
+1. Dashboard → **Calls** tab
+2. Enter a phone number and purpose (e.g. "Appointment reminder for tomorrow at 2pm")
+3. Click **Call now**
+4. The AI will call the number, introduce itself as calling from the business, and carry out the purpose
+5. After the call ends, the transcript appears in the call history
+
+### Vapi webhook (for inbound calls + call events)
+In Vapi dashboard → Phone Numbers → your number → set Server URL to:
+```
+https://nexora.cmdfleet.com/webhooks/vapi
+```
+This saves all call transcripts and recordings back to the database automatically.
+
+### Plan pricing reminder
+| Plan | Price | Calling |
+|---|---|---|
+| Free | $0/mo | ❌ WhatsApp only |
+| Basic | $29/mo | ❌ WhatsApp only |
+| Pro | $99/mo | ❌ WhatsApp only |
+| **Business** | **$199/mo** | **✅ WhatsApp + AI calls** |

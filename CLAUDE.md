@@ -128,7 +128,7 @@ internal_tools/      → Admin scripts, deployment utilities
 ### 3. Client & Subscription Management ✅
 - **Client model:** id, name, email, slug, api_key (UUID), status, business_type,
   is_active, owner_user_id, plus all per-tenant credential fields (see model details)
-- **Subscription model:** tier (free/basic/pro), monthly_limit, requests_used, is_active
+- **Subscription model:** tier (free/basic/pro/business), monthly_limit, requests_used, is_active
 - API:
   - `POST /clients` — create client
   - `GET /clients` — list all clients
@@ -238,7 +238,21 @@ internal_tools/      → Admin scripts, deployment utilities
 - Webhook trigger: `POST /webhooks/n8n/trigger` — accepts arbitrary payload for manual n8n triggers
 - n8n runs at `http://localhost:5678` (Docker container)
 
-### 11. Production Deployment Setup ✅
+### 11. AI Calling Agent (Vapi) ✅
+- **`calling_service.py`** — Vapi API integration: `make_outbound_call`, `get_call`, `list_calls`
+- **`models/call_log.py`** — CallLog ORM model (direction, status, transcript, recording_url, duration_seconds, vapi_call_id)
+- **Business tier** — `tier="business"`, monthly_limit=99999 (unlimited); enforced on `/calls/outbound`
+- Per-tenant credentials: `vapi_api_key`, `vapi_phone_number_id` (stored on Client, fallback to global .env)
+- API:
+  - `GET /calls` — list call logs (tenant-scoped)
+  - `GET /calls/{id}` — get single call log
+  - `POST /calls/outbound` — trigger outbound AI call (Business tier only)
+  - `POST /webhooks/vapi` — public webhook; handles `end-of-call-report` + `status-update` events
+- Dashboard: **Calls tab** — outbound dialer + call history with transcripts + recording links
+- Settings: Vapi API Key + Phone Number ID fields added to tenant Settings tab
+- Pricing: **Business plan** ($199/mo) added as 4th tier on landing page
+
+### 12. Production Deployment Setup ✅
 - **`backend/Dockerfile`** — production build: 2 Uvicorn workers, no `--reload`
 - **`docker/docker-compose.yml`** — dev stack: source volume mount + `--reload` command override
 - **`docker-compose.prod.yml`** — production stack run from repo root; postgres not exposed
@@ -268,7 +282,7 @@ internal_tools/      → Admin scripts, deployment utilities
 - **`/dashboard`** — full SPA; checks JWT on load, redirects to `/login` if missing
 - **Sidebar navigation** — platform admins see all tabs; tenant admins see only their tabs
 - **Platform-admin-only tabs:** Clients, Tenants, Team
-- **Tenant-visible tabs:** Overview, WhatsApp, Contacts, Appointments, Settings
+- **Tenant-visible tabs:** Overview, WhatsApp, Contacts, Appointments, Calls, Settings
 
 **Dashboard tabs:**
 
@@ -280,7 +294,8 @@ internal_tools/      → Admin scripts, deployment utilities
 | WhatsApp | View all conversations with intent/urgency badges; message history |
 | Contacts | CRM contacts table; search/filter; edit details, status; sync to HubSpot/Zoho |
 | Appointments | Pending/confirmed/completed list; confirm with date+time; Google Calendar sync status |
-| Settings | Tenant owner updates their own WhatsApp, HubSpot, Zoho, Google Calendar, AI provider config |
+| Calls | AI calling agent — outbound dialer, call history, transcripts, recordings (Business plan) |
+| Settings | Tenant owner updates their own WhatsApp, HubSpot, Zoho, Google Calendar, AI provider, Vapi config |
 | Tenants | Platform admin: browse all tenants, view integration status, suspend/activate |
 | Team | Platform owner: create/list platform admin users |
 
@@ -290,13 +305,14 @@ internal_tools/      → Admin scripts, deployment utilities
 
 | Model | File | Key Fields |
 |---|---|---|
-| Client (Tenant) | `models/client.py` | id, name, email, slug, api_key, status, business_type, is_active, owner_user_id, wa_phone_number_id, wa_access_token, wa_verify_token, hubspot_api_key, zoho_*, google_*, ai_provider |
+| Client (Tenant) | `models/client.py` | id, name, email, slug, api_key, status, business_type, is_active, owner_user_id, wa_phone_number_id, wa_access_token, wa_verify_token, hubspot_api_key, zoho_*, google_*, ai_provider, vapi_api_key, vapi_phone_number_id |
 | AdminUser | `models/admin_user.py` | id, email, hashed_password, first_name, last_name, role, tenant_id (null=platform admin), is_active |
 | Subscription | `models/subscription.py` | id, client_id, tier, monthly_limit, requests_used, is_active |
 | AutomationJob | `models/automation_job.py` | id, client_id, provider, prompt, response, tokens_used, status |
 | WhatsAppConversation | `models/whatsapp_conversation.py` | id, phone_number, client_id, display_name, last_message, last_reply, last_intent, message_count |
 | Contact | `models/contact.py` | id, client_id, phone_number, email, first_name, last_name, source, crm_hubspot_id, crm_zoho_id, last_intent, last_urgency, last_summary, status |
 | Appointment | `models/appointment.py` | id, client_id, contact_id, phone_number, customer_name, service, scheduled_at, duration_minutes, status, google_event_id, reminder_sent |
+| CallLog | `models/call_log.py` | id, client_id, contact_id, phone_number, direction, status, duration_seconds, transcript, recording_url, vapi_call_id, ended_reason |
 
 ---
 
@@ -310,6 +326,7 @@ internal_tools/      → Admin scripts, deployment utilities
 | `c3f1a8b29e04` | contacts table |
 | `f4e7d2c1b9a0` | appointments table |
 | `e9b4d7f2a031` | ~20 tenant fields on clients + tenant_id on admin_users |
+| `a1b2c3d4e5f6` | call_logs table + vapi_api_key/vapi_phone_number_id on clients |
 
 Migrations run automatically when the backend starts (`alembic upgrade head` in `on_startup`).
 
@@ -415,12 +432,13 @@ All in `sops/` — written so the India operator can follow them independently.
 | 20 | Self-service tenant signup tested end-to-end | ✅ Done |
 | 21 | Landing page — Plumbers + Real Estate verticals added | ✅ Done |
 | 22 | Cousin Punjab outreach script (Punjabi + Hindi + Roman) | ✅ Done — sops/cousin_outreach_script.md |
-| 23 | Billing / Stripe payment integration | 🔜 Planned |
-| 24 | Email notifications (appointment confirmations) | 🔜 Planned |
-| 25 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
-| 26 | Mobile app (React Native) | 🔜 Planned |
-| 27 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
-| 28 | White-label / custom domain per tenant | 🔜 Planned |
+| 23 | AI Calling Agent (Vapi) — Business plan tier | ✅ Done |
+| 24 | Billing / Stripe payment integration | 🔜 Planned |
+| 25 | Email notifications (appointment confirmations) | 🔜 Planned |
+| 26 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
+| 27 | Mobile app (React Native) | 🔜 Planned |
+| 28 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
+| 29 | White-label / custom domain per tenant | 🔜 Planned |
 
 ---
 
