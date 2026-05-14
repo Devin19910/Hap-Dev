@@ -137,7 +137,7 @@ export default function RegisterPage() {
 
         <div className="text-center">
           <span className="text-slate-500 text-sm">Already have an account? </span>
-          <a href="/dashboard" className="text-sky-400 text-sm hover:text-sky-300">Sign in</a>
+          <a href="/login" className="text-sky-400 text-sm hover:text-sky-300">Sign in</a>
         </div>
 
         <p className="text-slate-600 text-xs text-center">

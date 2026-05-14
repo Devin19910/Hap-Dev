@@ -7,8 +7,8 @@ export default function Home() {
         <div className="flex gap-6 text-sm text-white/70">
           <a href="#services" className="hover:text-white transition">Services</a>
           <a href="#pricing" className="hover:text-white transition">Pricing</a>
-          <a href="/dashboard" className="bg-brand-500 text-white px-4 py-2 rounded-lg hover:bg-sky-400 transition">
-            Dashboard
+          <a href="/login" className="bg-brand-500 text-white px-4 py-2 rounded-lg hover:bg-sky-400 transition">
+            Sign in
           </a>
         </div>
       </nav>

@@ -83,68 +83,6 @@ async function apiFetch(token: string, path: string, opts: RequestInit = {}) {
   return r.json()
 }
 
-// ── Login screen ───────────────────────────────────────────────────────────
-
-function LoginScreen({ onLogin }: { onLogin: (token: string, user: AdminUser) => void }) {
-  const [email, setEmail]       = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError]       = useState("")
-  const [loading, setLoading]   = useState(false)
-
-  async function submit() {
-    if (!email || !password) { setError("Enter email and password"); return }
-    setLoading(true); setError("")
-    try {
-      const body = new URLSearchParams({ username: email, password })
-      const r = await fetch(`${API}/auth/token`, { method: "POST", body })
-      if (!r.ok) { const e = await r.json(); setError(e.detail ?? "Login failed"); return }
-      const { access_token } = await r.json()
-      const user: AdminUser = await apiFetch(access_token, "/auth/me")
-      localStorage.setItem("jwt", access_token)
-      onLogin(access_token, user)
-    } catch {
-      setError("Cannot reach backend — is Docker running?")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <div className="bg-slate-800 p-8 rounded-2xl w-80 flex flex-col gap-4 shadow-xl">
-        <div>
-          <h1 className="text-white font-bold text-xl">AI Platform</h1>
-          <p className="text-slate-400 text-sm mt-1">Admin Dashboard</p>
-        </div>
-        <input
-          className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submit()}
-        />
-        <input
-          className="bg-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && submit()}
-        />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="bg-sky-500 text-white rounded-lg py-2 font-semibold hover:bg-sky-400 transition disabled:opacity-50"
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ── Sidebar ────────────────────────────────────────────────────────────────
 
 const NAV: { id: Tab; label: string; icon: string; platformOnly?: boolean; tenantOnly?: boolean }[] = [
@@ -1846,6 +1784,7 @@ function TeamTab({ token }: { token: string }) {
 export default function Dashboard() {
   const [token, setToken]             = useState<string | null>(null)
   const [user, setUser]               = useState<AdminUser | null>(null)
+  const [ready, setReady]             = useState(false)
   const [tab, setTab]                 = useState<Tab>("overview")
   const [clients, setClients]         = useState<Client[]>([])
   const [allJobs, setAllJobs]         = useState<Job[]>([])
@@ -1853,10 +1792,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     const saved = localStorage.getItem("jwt")
-    if (!saved) return
+    if (!saved) { setReady(true); return }
     apiFetch(saved, "/auth/me")
-      .then(u => { setToken(saved); setUser(u) })
-      .catch(() => localStorage.removeItem("jwt"))
+      .then(u => { setToken(saved); setUser(u); setReady(true) })
+      .catch(() => { localStorage.removeItem("jwt"); setReady(true) })
   }, [])
 
   const loadClients = useCallback(async (t: string) => {
@@ -1880,16 +1819,22 @@ export default function Dashboard() {
     }
   }, [token, loadClients, loadConversations])
 
-  function handleLogin(t: string, u: AdminUser) {
-    setToken(t); setUser(u)
-  }
-
   function handleLogout() {
     localStorage.removeItem("jwt")
     setToken(null); setUser(null); setClients([]); setAllJobs([]); setConversations([])
+    window.location.replace("/login")
   }
 
-  if (!token || !user) return <LoginScreen onLogin={handleLogin} />
+  if (!ready) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <p className="text-slate-500 text-sm">Loading…</p>
+    </div>
+  )
+
+  if (!token || !user) {
+    window.location.replace("/login")
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex">
