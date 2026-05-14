@@ -12,6 +12,7 @@ const BUSINESS_TYPES = [
   { value: "plumber",     label: "Plumber / Plumbing" },
   { value: "trucking",    label: "Trucking Company" },
   { value: "restaurant",  label: "Restaurant / Cafe" },
+  { value: "realestate",  label: "Real Estate Agent" },
   { value: "other",       label: "Other" },
 ]
 

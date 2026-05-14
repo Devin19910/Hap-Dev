@@ -49,6 +49,16 @@ const INDUSTRIES = [
       "Captures every lead even outside business hours",
     ],
   },
+  {
+    name: "Real Estate Agents",
+    icon: "🏠",
+    pain: "Buyers want instant answers — slow replies lose deals",
+    wins: [
+      "AI answers property inquiries instantly 24/7",
+      "Books viewings and collects buyer requirements",
+      "Captures every lead before they call a competitor",
+    ],
+  },
 ]
 
 const FEATURES = [
