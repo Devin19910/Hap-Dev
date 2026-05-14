@@ -39,6 +39,16 @@ const INDUSTRIES = [
       "Collects document checklists from new clients",
     ],
   },
+  {
+    name: "Plumbers & Tradespeople",
+    icon: "🔧",
+    pain: "Emergency calls missed = jobs lost to competitors",
+    wins: [
+      "AI responds instantly to emergency inquiries 24/7",
+      "Books service appointments and collects job details",
+      "Captures every lead even outside business hours",
+    ],
+  },
 ]
 
 const FEATURES = [

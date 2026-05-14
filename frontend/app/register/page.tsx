@@ -9,6 +9,7 @@ const BUSINESS_TYPES = [
   { value: "clinic",      label: "Clinic / Dentist" },
   { value: "gym",         label: "Gym / Fitness" },
   { value: "immigration", label: "Immigration Consultant" },
+  { value: "plumber",     label: "Plumber / Plumbing" },
   { value: "trucking",    label: "Trucking Company" },
   { value: "restaurant",  label: "Restaurant / Cafe" },
   { value: "other",       label: "Other" },
