@@ -48,3 +48,6 @@ class Client(Base):
     # Per-tenant Vapi (AI Calling Agent)
     vapi_api_key         = Column(String, default="")
     vapi_phone_number_id = Column(String, default="")
+
+    # Stripe billing
+    stripe_customer_id = Column(String, default="")

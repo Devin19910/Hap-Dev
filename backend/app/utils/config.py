@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     # Vapi.ai (AI Calling Agent)
     vapi_api_key: str = ""
     vapi_phone_number_id: str = ""
+    # Stripe billing
+    stripe_secret_key:     str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_basic:    str = ""   # price_xxx from Stripe dashboard → Products
+    stripe_price_pro:      str = ""
+    stripe_price_business: str = ""
+    app_url: str = "https://hap-dev.vercel.app"
 
     @property
     def effective_jwt_secret(self) -> str:

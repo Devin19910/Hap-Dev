@@ -553,6 +553,27 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
   )
 }
 
+// ── Upgrade button ────────────────────────────────────────────────────────
+
+function UpgradeButton({ token, tier, label, highlight }: { token: string; tier: string; label: string; highlight?: boolean }) {
+  const [loading, setLoading] = useState(false)
+  async function go() {
+    setLoading(true)
+    try {
+      const r = await apiFetch(token, "/billing/checkout", { method: "POST", body: JSON.stringify({ tier }) })
+      if (r?.url) window.location.href = r.url
+    } catch { setLoading(false) }
+  }
+  return (
+    <button onClick={go} disabled={loading}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50 ${
+        highlight ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-sky-600 hover:bg-sky-500 text-white"
+      }`}>
+      {loading ? "Redirecting…" : label}
+    </button>
+  )
+}
+
 // ── Settings tab (tenant config) ──────────────────────────────────────────
 
 const AI_PROVIDERS = ["claude", "openai", "gemini"]
@@ -623,7 +644,7 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-xl font-bold text-white">Settings</h1>
 
-      {/* Usage */}
+      {/* Usage + Billing */}
       {usage && (
         <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
           <div className="flex items-center justify-between mb-3">
@@ -635,6 +656,35 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
               style={{ width: `${usagePct}%` }} />
           </div>
           <p className="text-xs text-slate-500 mt-2">{usage.remaining} requests remaining this month</p>
+
+          {/* Upgrade buttons */}
+          {usage.tier !== "business" && (
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <p className="text-xs text-slate-400 mb-3">Upgrade your plan</p>
+              <div className="flex flex-wrap gap-2">
+                {usage.tier === "free" && (
+                  <UpgradeButton token={token} tier="basic" label="Basic — $29/mo" />
+                )}
+                {(usage.tier === "free" || usage.tier === "basic") && (
+                  <UpgradeButton token={token} tier="pro" label="Pro — $99/mo" />
+                )}
+                <UpgradeButton token={token} tier="business" label="Business — $199/mo" highlight />
+              </div>
+            </div>
+          )}
+
+          {/* Manage billing portal */}
+          {usage.tier !== "free" && (
+            <button
+              onClick={async () => {
+                const r = await apiFetch(token, "/billing/portal", { method: "POST" }).catch(() => null)
+                if (r?.url) window.location.href = r.url
+              }}
+              className="mt-3 text-xs text-slate-400 hover:text-white transition underline"
+            >
+              Manage billing / cancel
+            </button>
+          )}
         </div>
       )}
 
