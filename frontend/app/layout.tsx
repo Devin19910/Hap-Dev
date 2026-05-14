@@ -5,8 +5,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AI Automation Co",
-  description: "AI-powered automation services for your business",
+  title: "Nexora — WhatsApp AI for Local Businesses",
+  description: "Nexora connects an AI assistant to your WhatsApp. It replies to customers, books appointments, and captures leads automatically — 24/7.",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

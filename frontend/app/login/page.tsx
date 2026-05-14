@@ -41,7 +41,7 @@ export default function LoginPage() {
 
         <div>
           <h1 className="text-white font-bold text-2xl">Welcome back</h1>
-          <p className="text-slate-400 text-sm mt-1">Sign in to your AI platform dashboard.</p>
+          <p className="text-slate-400 text-sm mt-1">Sign in to your Nexora dashboard.</p>
         </div>
 
         <div className="flex flex-col gap-3">

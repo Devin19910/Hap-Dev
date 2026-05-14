@@ -103,7 +103,7 @@ function Sidebar({ tab, setTab, user, onLogout }: {
   return (
     <aside className="w-56 bg-slate-800 flex flex-col border-r border-white/10 shrink-0">
       <div className="px-5 py-4 border-b border-white/10">
-        <p className="text-white font-bold text-sm">AI Platform</p>
+        <p className="text-white font-bold text-sm">Nexora</p>
         <p className="text-slate-400 text-xs mt-0.5">Operations Hub</p>
       </div>
       <nav className="flex-1 py-3 px-2 flex flex-col gap-1">

@@ -60,7 +60,7 @@ export default function RegisterPage() {
         <div>
           <h1 className="text-white font-bold text-2xl">Start your free trial</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Set up your AI automation workspace in 30 seconds.
+            Set up your Nexora workspace in 30 seconds.
           </p>
         </div>
 
