@@ -166,10 +166,83 @@ type ValueStats = {
   total_messages: number
   total_appointments: number
   total_leads: number
+  has_whatsapp: boolean
+  business_type: string
 }
 
-function ValueDashboard({ token }: { token: string }) {
-  const [stats, setStats]   = useState<ValueStats | null>(null)
+// ── Getting Started checklist (shown until WhatsApp is connected) ──────────
+
+function GettingStarted({ onGoToSettings }: { onGoToSettings: () => void }) {
+  const steps = [
+    { done: true,  label: "Account created",          detail: "You are in — welcome to Nexora!" },
+    { done: false, label: "Connect your WhatsApp",     detail: "Your AI assistant needs a WhatsApp number to start replying to customers.", cta: true },
+    { done: false, label: "Send a test message",       detail: "Once WhatsApp is connected, send yourself a message to see the AI reply live." },
+  ]
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Banner */}
+      <div className="rounded-xl bg-gradient-to-r from-sky-500/20 to-violet-500/10 border border-sky-500/30 px-6 py-5">
+        <p className="text-white font-bold text-base">You are almost live — 2 steps to go</p>
+        <p className="text-slate-300 text-sm mt-1">
+          Once your WhatsApp is connected, your AI will automatically reply to every customer message, save new leads, and capture appointment bookings — 24/7.
+        </p>
+      </div>
+
+      {/* Steps */}
+      <div className="flex flex-col gap-3">
+        {steps.map((s, i) => (
+          <div key={i} className={`flex items-start gap-4 rounded-xl px-5 py-4 border ${
+            s.done
+              ? "bg-green-500/10 border-green-500/20"
+              : "bg-slate-800 border-white/5"
+          }`}>
+            {/* Circle */}
+            <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+              s.done ? "bg-green-500 text-white" : "bg-slate-700 text-slate-400"
+            }`}>
+              {s.done ? "✓" : i + 1}
+            </div>
+            {/* Text */}
+            <div className="flex-1">
+              <p className={`text-sm font-semibold ${s.done ? "text-green-400" : "text-white"}`}>{s.label}</p>
+              <p className="text-slate-400 text-xs mt-0.5">{s.detail}</p>
+              {s.cta && (
+                <button
+                  onClick={onGoToSettings}
+                  className="mt-2 px-4 py-1.5 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-lg transition"
+                >
+                  Go to Settings →
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* What they will see */}
+      <div className="bg-slate-800/60 border border-white/5 rounded-xl px-5 py-4">
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Once you are live, you will see</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { icon: "💬", label: "Messages handled by AI" },
+            { icon: "⏱",  label: "Hours saved per month" },
+            { icon: "📅", label: "Appointments auto-booked" },
+            { icon: "👤", label: "New leads captured" },
+          ].map(c => (
+            <div key={c.label} className="bg-slate-700/50 rounded-lg p-3 text-center">
+              <div className="text-xl mb-1">{c.icon}</div>
+              <p className="text-slate-400 text-xs leading-tight">{c.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ValueDashboard({ token, onGoToSettings }: { token: string; onGoToSettings: () => void }) {
+  const [stats, setStats]     = useState<ValueStats | null>(null)
   const [loading, setLoading] = useState(true)
   const monthName = new Date().toLocaleString("en-US", { month: "long" })
 
@@ -189,6 +262,9 @@ function ValueDashboard({ token }: { token: string }) {
   )
 
   if (!stats) return null
+
+  // Not connected yet — show setup checklist
+  if (!stats.has_whatsapp) return <GettingStarted onGoToSettings={onGoToSettings} />
 
   const impactCards = [
     {
@@ -235,11 +311,9 @@ function ValueDashboard({ token }: { token: string }) {
           <h2 className="text-lg font-bold text-white">Nexora Impact — {monthName}</h2>
           <p className="text-slate-400 text-sm mt-0.5">Here is what your AI assistant did for your business this month</p>
         </div>
-        {hasActivity && (
-          <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">
-            AI is working ✓
-          </span>
-        )}
+        <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">
+          AI is working ✓
+        </span>
       </div>
 
       {/* Impact cards */}
@@ -283,8 +357,8 @@ function ValueDashboard({ token }: { token: string }) {
 
 // ── Overview tab ──────────────────────────────────────────────────────────
 
-function OverviewTab({ token, clients, jobs, conversations, user }: {
-  token: string; clients: Client[]; jobs: Job[]; conversations: Conversation[]; user: AdminUser
+function OverviewTab({ token, clients, jobs, conversations, user, onGoToSettings }: {
+  token: string; clients: Client[]; jobs: Job[]; conversations: Conversation[]; user: AdminUser; onGoToSettings: () => void
 }) {
   const isTenant    = user.tenant_id !== null && user.tenant_id !== undefined
   const totalTokens = jobs.reduce((s, j) => s + (j.tokens_used ?? 0), 0)
@@ -307,7 +381,7 @@ function OverviewTab({ token, clients, jobs, conversations, user }: {
       <h1 className="text-xl font-bold text-white">Overview</h1>
 
       {/* Tenant users see value dashboard */}
-      {isTenant && <ValueDashboard token={token} />}
+      {isTenant && <ValueDashboard token={token} onGoToSettings={onGoToSettings} />}
 
       {/* Platform admins see platform-wide stats */}
       {!isTenant && (
@@ -2478,7 +2552,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-900 text-white flex">
       <Sidebar tab={tab} setTab={setTab} user={user} onLogout={handleLogout} />
       <main className="flex-1 p-6 overflow-y-auto">
-        {tab === "overview"  && <OverviewTab token={token} clients={clients} jobs={allJobs} conversations={conversations} user={user} />}
+        {tab === "overview"  && <OverviewTab token={token} clients={clients} jobs={allJobs} conversations={conversations} user={user} onGoToSettings={() => setTab("settings")} />}
         {tab === "clients"   && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
         {tab === "jobs"      && <JobsTab token={token} clients={clients} />}
         {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}

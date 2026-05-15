@@ -8,6 +8,7 @@ from app.models.admin_user import AdminUser
 from app.models.automation_job import AutomationJob
 from app.models.appointment import Appointment
 from app.models.contact import Contact
+from app.models.client import Client
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -40,6 +41,14 @@ def get_value_stats(
 
     hours_saved = round(messages_month * 5 / 60, 1)
 
+    has_whatsapp = False
+    business_type = "general"
+    if tenant_id:
+        client = db.query(Client).filter(Client.id == tenant_id).first()
+        if client:
+            has_whatsapp  = bool(client.wa_phone_number_id)
+            business_type = client.business_type or "general"
+
     return {
         "messages_this_month":      messages_month,
         "hours_saved_this_month":   hours_saved,
@@ -48,4 +57,6 @@ def get_value_stats(
         "total_messages":           total_messages,
         "total_appointments":       total_appts,
         "total_leads":              total_leads,
+        "has_whatsapp":             has_whatsapp,
+        "business_type":            business_type,
     }

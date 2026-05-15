@@ -82,11 +82,44 @@ In their Settings page:
 > ⚠️ **NOTE:** Nexora's WhatsApp app is waiting for Meta approval (expected soon).
 > Once Meta approves, all clients go live automatically.
 
-**Every client needs their own WhatsApp number connected to Nexora.** This is how every serious platform works — customers message the business's own number and name, not a shared one. If everyone shared one number, customers would not trust it ("who is this?").
+**Choose the right path for this client:**
+
+| | Path A — Zero Setup | Path B — Full Setup |
+|---|---|---|
+| **Time** | 5 minutes | 20 minutes |
+| **Client needs** | Nothing | A Facebook account |
+| **Number used** | Nexora's shared number (temporary) | Their own business number (permanent) |
+| **Best for** | Close the sale today, sort number later | Client wants their own branding from day 1 |
+| **Privacy** | Customers see "Nexora" | Customers see the client's own business name |
+
+> **How to decide:** If the client is hesitating or has no tech setup at all — start with **Path A** to get them live today and build trust. Then migrate to **Path B** within the first month. If they are already comfortable — go straight to **Path B**.
 
 ---
 
-### Real example — John's Pizza Restaurant
+### Path A — Zero Setup (5 minutes, start today)
+
+Use Nexora's shared number as a temporary starter. The client's dashboard goes live immediately.
+
+What you tell the client:
+> *"Aaj hum aapko live kar dete hain. Abhi ke liye customers hamare Nexora number pe message karenge. Agli baar milne par aapka apna number connect kar denge — that's when your name shows up."*
+
+**In the dashboard:**
+1. Go to **Tenants** tab → click their account → **Settings**
+2. Scroll to **WhatsApp Cloud API**
+3. Fill in:
+   - **Phone Number ID** → `1091106447424755`
+   - **Access Token** → ask Dev for current token (in DEVINDER_KNOWLEDGE.md)
+   - **Verify Token** → `nexora-verify-2026`
+   - **Business Name** → their business name
+4. Click **Save Settings** ✅
+
+They are live. Schedule a second session to complete Path B and migrate to their own number.
+
+---
+
+### Path B — Full Setup (own number, 20 minutes)
+
+**Real example — John's Pizza Restaurant**
 
 John has a pizza place. He has no LLC, no EIN, no tech setup. Here is how you connect him:
 
