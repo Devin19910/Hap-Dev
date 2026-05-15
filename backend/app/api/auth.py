@@ -158,7 +158,36 @@ async def create_user(
 
 @router.post("/forgot-password", status_code=200)
 async def forgot_password(body: dict, db: Session = Depends(get_db)):
-    """Always returns 200 — does not reveal whether email exists. Email sending planned for future."""
+    """Generate a reset token and email it. Always returns 200 — never reveals if email exists."""
+    from ..services.email_service import send_password_reset
+    email = (body.get("email") or "").strip().lower()
+    user = db.query(AdminUser).filter(AdminUser.email == email, AdminUser.is_active == True).first()
+    if user:
+        token_data = {"sub": user.id, "type": "password_reset", "exp": datetime.utcnow() + timedelta(hours=1)}
+        token = jwt.encode(token_data, settings.effective_jwt_secret, algorithm=ALGORITHM)
+        reset_url = f"{settings.app_url}/reset-password?token={token}"
+        send_password_reset(user.email, reset_url, user.first_name)
+    return {"ok": True}
+
+
+@router.post("/reset-password", status_code=200)
+async def reset_password_with_token(body: dict, db: Session = Depends(get_db)):
+    """Consume a reset token and set a new password."""
+    token = body.get("token", "")
+    new_password = body.get("new_password", "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=422, detail="Password must be at least 6 characters")
+    try:
+        payload = jwt.decode(token, settings.effective_jwt_secret, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
+    if payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid reset link")
+    user = db.query(AdminUser).filter(AdminUser.id == payload["sub"], AdminUser.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.hashed_password = hash_password(new_password)
+    db.commit()
     return {"ok": True}
 
 

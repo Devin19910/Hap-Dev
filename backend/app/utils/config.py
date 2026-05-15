@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     stripe_price_pro_yearly:      str = ""
     stripe_price_business_yearly: str = ""
     app_url: str = "https://hap-dev.vercel.app"
+    # Resend email
+    resend_api_key:    str = ""
+    resend_from_email: str = "info@cmdfleet.com"
+    resend_from_name:  str = "Nexora"
 
     @property
     def effective_jwt_secret(self) -> str:
