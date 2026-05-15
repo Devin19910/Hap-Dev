@@ -115,15 +115,21 @@ def create_subscription(
         "default_payment_method": real_pm_id,
         "payment_behavior": "default_incomplete",
         "payment_settings": {"save_default_payment_method": "on_subscription"},
-        "expand": ["latest_invoice.payment_intent"],
         "metadata": {"tier": tier},
     })
 
     status = sub.status
+
+    # Retrieve client_secret for SCA if subscription is incomplete
     client_secret = None
     if status == "incomplete":
-        pi = sub.latest_invoice.payment_intent
-        client_secret = pi.client_secret if pi else None
+        try:
+            invoice = sc.invoices.retrieve(sub.latest_invoice, {"expand": ["payment_intent"]})
+            pi = getattr(invoice, "payment_intent", None)
+            if pi:
+                client_secret = pi.client_secret
+        except Exception:
+            pass
 
     return {
         "subscription_id": sub.id,
