@@ -79,43 +79,27 @@ In their Settings page:
 
 ## PHASE 4 — WhatsApp Setup
 
-> ⚠️ **NOTE:** WhatsApp AI is waiting for Meta to approve Nexora's app (expected within 48 hours as of May 15).
-> Complete Steps 4A and 4B now. Step 4C (going live) — do when Meta approves.
+> ⚠️ **NOTE:** Nexora's WhatsApp app is waiting for Meta approval (expected soon).
+> Once Meta approves, all clients go live automatically — nothing extra needed from them.
 
-### Step 4A — What the client needs to do (their side)
+**All clients use Nexora's shared WhatsApp number. The client does NOT need a Facebook Business account — you handle everything.**
 
-The client needs a **WhatsApp Business API** number from Meta. Two options:
+Here is what you tell the client:
 
-**Simple option (for now):** Use Nexora's shared number temporarily.
-- Tell the client: "For now, customers message our Nexora test number. When your own number is ready, we switch it."
-- Skip 4B for now and move to Phase 5.
+> *"Aapke customers hamare Nexora WhatsApp number pe message karenge. Jab bhi koi message aayega, AI khud reply karega. Aapko kuch nahi karna — bas dashboard check karo."*
 
-**Full option (their own WhatsApp number):**
-- Client needs a Facebook Business account
-- Tell them to go to **business.facebook.com** and create one
-- Once they have it, they need to add a WhatsApp number
-- This takes 1-2 days with Meta — schedule a separate call for this
+### What you do in the dashboard:
 
-### Step 4B — Enter their WhatsApp credentials (when they have them)
+1. Go to **Tenants** tab → click their account → click **Settings**
+2. Scroll to **WhatsApp Cloud API** section
+3. Fill in (these are the same for ALL clients — Nexora's shared credentials):
+   - **Phone Number ID** → `1091106447424755`
+   - **Access Token** → ask Dev for the current token (saved in DEVINDER_KNOWLEDGE.md)
+   - **Verify Token** → `nexora-verify-2026`
+   - **Business Name** → their business name
+4. Click **Save Settings**
 
-In their Settings page in the dashboard:
-
-1. Scroll to **WhatsApp Cloud API** section
-2. Fill in:
-   - **Phone Number ID** → from their Meta Developer Dashboard
-   - **Access Token** → their permanent system user token
-   - **Verify Token** → create any secret word (e.g. `nexora-clientname-2026`)
-   - **Business Name** → their business name exactly
-3. Click **Save Settings**
-
-### Step 4C — Register the webhook with Meta (when Meta approves Nexora)
-
-Tell the client to go to their Meta Developer app:
-- Webhook URL: `https://nexora.cmdfleet.com/webhooks/whatsapp/THEIR_TENANT_ID`
-- Verify token: whatever you set in Step 4B
-- Subscribe to: messages
-
-> **Find their Tenant ID:** Tenants tab → click their name → the ID is in the URL or shown on their profile page.
+> **That's it.** No Facebook, no Meta developer account, no waiting. The client just tells their customers to WhatsApp the Nexora number.
 
 ---
 
