@@ -156,6 +156,31 @@ async def create_user(
     return user
 
 
+@router.post("/forgot-password", status_code=200)
+async def forgot_password(body: dict, db: Session = Depends(get_db)):
+    """Always returns 200 — does not reveal whether email exists. Email sending planned for future."""
+    return {"ok": True}
+
+
+@router.post("/users/{user_id}/reset-password", status_code=200)
+async def reset_user_password(
+    user_id: str,
+    body: dict,
+    _: AdminUser = Depends(require_owner),
+    db: Session = Depends(get_db),
+):
+    """Reset any user's password. Owner only."""
+    new_password = body.get("new_password", "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=422, detail="Password must be at least 6 characters")
+    user = db.query(AdminUser).filter(AdminUser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.hashed_password = hash_password(new_password)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/users", response_model=list[UserOut])
 async def list_users(
     _: AdminUser = Depends(require_owner),

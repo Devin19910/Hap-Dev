@@ -2417,13 +2417,16 @@ function CallsTab({ token, clients }: { token: string; clients: Client[] }) {
 // ── Team tab (owner only) ──────────────────────────────────────────────────
 
 function TeamTab({ token }: { token: string }) {
-  const [users, setUsers]       = useState<AdminUser[]>([])
-  const [email, setEmail]       = useState("")
-  const [password, setPassword] = useState("")
-  const [firstName, setFirst]   = useState("")
-  const [role, setRole]         = useState("operator")
-  const [error, setError]       = useState("")
-  const [success, setSuccess]   = useState("")
+  const [users, setUsers]           = useState<AdminUser[]>([])
+  const [email, setEmail]           = useState("")
+  const [password, setPassword]     = useState("")
+  const [firstName, setFirst]       = useState("")
+  const [role, setRole]             = useState("operator")
+  const [error, setError]           = useState("")
+  const [success, setSuccess]       = useState("")
+  const [resetId, setResetId]       = useState<string | null>(null)
+  const [resetPwd, setResetPwd]     = useState("")
+  const [resetMsg, setResetMsg]     = useState<Record<string, string>>({})
 
   useEffect(() => {
     apiFetch(token, "/auth/users").then(setUsers).catch(() => {})
@@ -2443,6 +2446,20 @@ function TeamTab({ token }: { token: string }) {
     } catch (e: any) { setError(e.message) }
   }
 
+  async function doReset(userId: string) {
+    if (!resetPwd) return
+    try {
+      await apiFetch(token, `/auth/users/${userId}/reset-password`, {
+        method: "POST",
+        body: JSON.stringify({ new_password: resetPwd }),
+      })
+      setResetMsg(m => ({ ...m, [userId]: "Password updated ✓" }))
+      setResetId(null); setResetPwd("")
+    } catch (e: any) {
+      setResetMsg(m => ({ ...m, [userId]: e.message ?? "Failed" }))
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1 className="text-xl font-bold text-white">Team</h1>
@@ -2451,15 +2468,54 @@ function TeamTab({ token }: { token: string }) {
       <div className="bg-slate-800 rounded-xl border border-white/5">
         <p className="px-5 py-3 text-sm font-semibold text-white border-b border-white/10">Members</p>
         {users.map(u => (
-          <div key={u.id} className="px-5 py-3 flex items-center justify-between border-b border-white/5 last:border-0">
-            <div>
-              <p className="text-sm text-white font-medium">{u.first_name} {u.last_name}</p>
-              <p className="text-xs text-slate-400">{u.email}</p>
+          <div key={u.id} className="flex flex-col border-b border-white/5 last:border-0">
+            <div className="px-5 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-white font-medium">{u.first_name} {u.last_name}</p>
+                <p className="text-xs text-slate-400">{u.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${
+                  u.role === "owner" ? "bg-sky-500/20 text-sky-400" : "bg-slate-700 text-slate-400"}`}>
+                  {u.role}
+                </span>
+                <button
+                  onClick={() => { setResetId(resetId === u.id ? null : u.id); setResetPwd(""); setResetMsg({}) }}
+                  className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition"
+                >
+                  Reset password
+                </button>
+              </div>
             </div>
-            <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${
-              u.role === "owner" ? "bg-sky-500/20 text-sky-400" : "bg-slate-700 text-slate-400"}`}>
-              {u.role}
-            </span>
+            {resetId === u.id && (
+              <div className="px-5 pb-3 flex items-center gap-2">
+                <input
+                  className="flex-1 bg-slate-700 text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-sky-500"
+                  placeholder="New password (min 6 chars)"
+                  type="password"
+                  value={resetPwd}
+                  onChange={e => setResetPwd(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && doReset(u.id)}
+                />
+                <button
+                  onClick={() => doReset(u.id)}
+                  className="px-3 py-1.5 bg-sky-500 text-white rounded-lg text-sm font-semibold hover:bg-sky-400 transition"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setResetId(null); setResetPwd("") }}
+                  className="px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {resetMsg[u.id] && (
+              <p className={`px-5 pb-2 text-xs ${resetMsg[u.id].includes("✓") ? "text-green-400" : "text-red-400"}`}>
+                {resetMsg[u.id]}
+              </p>
+            )}
           </div>
         ))}
       </div>
