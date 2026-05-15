@@ -222,14 +222,30 @@ Payment is done by client directly on the dashboard with their card. You do not 
 
 Before you close the call, confirm everything:
 
+**Account**
 - [ ] Account created and client can log in
 - [ ] Business name and type set correctly
 - [ ] AI provider set to Claude
-- [ ] WhatsApp credentials entered (or scheduled for later)
-- [ ] Test message sent and AI replied (or scheduled for when Meta approves)
-- [ ] Client knows their dashboard URL and login
-- [ ] Plan upgraded or client knows how to pay
-- [ ] Client has your WhatsApp number for support
+
+**WhatsApp**
+- [ ] Client has a Facebook Business account (or you created one with them)
+- [ ] Their phone number is added and verified on Meta WhatsApp Business Platform
+- [ ] Phone Number ID and Access Token copied from Meta
+- [ ] Credentials entered in Nexora dashboard → Settings → WhatsApp Cloud API
+- [ ] Webhook registered with Meta (their tenant webhook URL + verify token)
+- [ ] Test message sent from your phone → AI replied ✅
+
+**Dashboard**
+- [ ] Client knows their dashboard URL and login (hap-dev.vercel.app/login)
+- [ ] You showed them: WhatsApp tab, Contacts tab, Appointments tab, Overview tab
+- [ ] Client understands they can see everything but should not change Settings
+
+**Payment**
+- [ ] Plan upgraded or client knows how to pay from Settings tab
+
+**Support**
+- [ ] Client has your WhatsApp number for help
+- [ ] You wrote their details in the Notes section below
 
 ---
 
