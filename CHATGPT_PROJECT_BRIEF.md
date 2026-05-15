@@ -180,7 +180,9 @@ These are the exact answers we gave Claude Code when it asked us questions while
 | Appointments | Detect booking intent → pending → confirm → Google Calendar | `services/appointment_service.py` |
 | Google Calendar | Create/update/delete events via OAuth2 | `services/google_calendar_service.py` |
 | Multi-tenancy | Self-service register, per-tenant credentials, data isolation | `api/tenants.py`, `utils/tenant_config.py` |
-| Database Migrations | 6 Alembic migrations, auto-run on startup | `alembic/versions/` |
+| AI Calling Agent | Outbound AI calls via Vapi — Business plan only; call logs, transcripts | `services/calling_service.py`, `api/calls.py` |
+| Stripe Billing | In-app checkout, subscription management, cancel/reactivate, branded PDF invoices | `api/billing.py`, `services/stripe_service.py`, `services/invoice_pdf.py` |
+| Database Migrations | 7 Alembic migrations, auto-run on startup | `alembic/versions/` |
 
 ### Frontend (Next.js + Tailwind)
 
@@ -201,7 +203,8 @@ These are the exact answers we gave Claude Code when it asked us questions while
 | WhatsApp | Everyone | All conversations, message history, intent/urgency badges |
 | Contacts | Everyone | CRM contacts table, search/filter, edit, sync to HubSpot/Zoho |
 | Appointments | Everyone | Pending/confirmed list, confirm with date+time, Calendar sync status |
-| Settings | Tenant admins | Update their WhatsApp, HubSpot, Zoho, Google Calendar, AI provider |
+| Calls | Everyone | AI calling agent — outbound dialer, call history, transcripts, recordings (Business plan) |
+| Settings | Tenant admins | Config (WhatsApp/CRM/AI/Vapi) + Billing: plan badge, upgrade modal, subscription management, invoice PDF download |
 | Tenants | Platform admin only | Browse all tenants, see integration status, suspend/activate |
 | Team | Platform owner only | Create/list platform admin users |
 
@@ -238,6 +241,7 @@ All in `/sops/` — written so the India operator can follow them independently 
 | `new_client_setup.md` | Creating a client manually via API |
 | `n8n_workflow_setup.md` | Importing and activating n8n workflow templates |
 | `api_key_management.md` | Generating, rotating, securing all API keys |
+| `stripe_setup.md` | Stripe account setup, products, webhook, publishable key, test flow, go-live checklist |
 
 ---
 
@@ -247,11 +251,12 @@ All in `/sops/` — written so the India operator can follow them independently 
 |---|---|
 | `clients` | Every tenant — name, email, slug, WhatsApp/HubSpot/Zoho/Google credentials (per-tenant) |
 | `admin_users` | Platform admins + tenant admins; `tenant_id = null` means platform admin |
-| `subscriptions` | tier (free/basic/pro), monthly limit, usage count per tenant |
+| `subscriptions` | tier (free/basic/pro/business), monthly limit, usage count per tenant |
 | `automation_jobs` | Every AI completion — prompt, response, tokens, provider, client |
 | `whatsapp_conversations` | One row per phone number per client — last message, intent, count |
 | `contacts` | Every WhatsApp contact captured as a lead — intent, urgency, CRM IDs |
 | `appointments` | Every booking — status, scheduled time, Google Calendar event ID |
+| `call_logs` | Every Vapi AI call — direction, status, transcript, recording URL, duration |
 
 ---
 
@@ -276,12 +281,13 @@ All in `/sops/` — written so the India operator can follow them independently 
 - ✅ Industries on landing page: Salons, Clinics, Gyms, Immigration, Plumbers, Real Estate, Restaurants
 - ✅ Cousin outreach script written in Punjabi (Gurmukhi) + Hindi (Devanagari) + Roman
 - ✅ AI Calling Agent (Vapi) built and deployed — Business plan ($199/mo), Calls dashboard tab, transcripts
+- ✅ Stripe billing — in-app checkout modal (no redirect), subscription management card, branded PDF invoice download, cancel/reactivate
 
 ### What still needs to be done
 - ⏳ Meta business verification approval (submitted — waiting 1-5 days)
 - ⏳ After Meta approval: register phone +1-781-354-7229, generate permanent token, publish app
 - 🔜 First real paying client onboarded by cousin in Punjab
-- 🔜 Stripe billing integration
+- 🔜 Switch Stripe from TEST mode to LIVE mode (when ready for real payments)
 - 🔜 Vapi account setup + test first AI phone call
 
 ---
@@ -290,7 +296,7 @@ All in `/sops/` — written so the India operator can follow them independently 
 
 | Priority | Feature | Why |
 |---|---|---|
-| 1 | Stripe billing integration | Automate plan upgrades — currently done manually via SQL |
+| 1 | Switch Stripe to Live mode | Stripe TEST mode is running — need live keys for real money |
 | 2 | Email notifications | Send appointment confirmations by email, not just WhatsApp |
 | 3 | Hindi/Punjabi AI replies | India clients' customers message in Hindi — AI should reply in same language |
 | 4 | Analytics dashboard | Show usage trends, conversation volume, booking conversion rates |

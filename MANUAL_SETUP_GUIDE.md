@@ -95,6 +95,7 @@ npm run dev        # starts at http://localhost:3000
 | Register first tenant (test) | ✅ Done — self-service signup tested end-to-end | §9 |
 | Cousin outreach script | ✅ Done — sops/cousin_outreach_script.md (Punjabi + Hindi + Roman) | — |
 | AI Calling Agent (Vapi) | ✅ Built + deployed — Business plan ($199/mo), Calls tab in dashboard | §13 |
+| Stripe billing | ✅ Done — in-app checkout, subscription management, invoice PDF download | §14 |
 
 ---
 
@@ -499,12 +500,14 @@ The calling agent is built and deployed. To activate it for a tenant:
 4. Click **Save Settings**
 
 ### Step 3 — Upgrade tenant to Business plan
-Currently done via API (Stripe coming later):
+
+**Self-service (recommended):** The tenant logs in → Settings → clicks **Business — $199/mo** → enters card in the in-app modal → plan upgrades automatically.
+
+**Manual override** (platform admin gifting a plan or fixing an error):
 ```bash
-curl -X PATCH https://nexora.cmdfleet.com/subscriptions/<client_id>/upgrade \
-  -H "Authorization: Bearer <admin_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"tier": "business"}'
+ssh nexora@192.168.168.98
+docker compose -f ~/nexora/docker-compose.prod.yml exec db psql -U nexora -d ai_automation -c \
+  "UPDATE subscriptions SET tier='business', monthly_limit=99999 WHERE client_id='TENANT_UUID';"
 ```
 
 ### Step 4 — Make a test call
@@ -528,3 +531,37 @@ This saves all call transcripts and recordings back to the database automaticall
 | Basic | $29/mo | ❌ WhatsApp only |
 | Pro | $99/mo | ❌ WhatsApp only |
 | **Business** | **$199/mo** | **✅ WhatsApp + AI calls** |
+
+---
+
+## §14 — Stripe Billing ✅ DONE
+
+Stripe TEST mode is live. Tenants can pay for plans directly inside the dashboard — no redirect to Stripe's website.
+
+### What tenants see in Settings tab:
+1. **Plan badge** — colour-coded (Free=grey, Basic=green, Pro=blue, Business=purple)
+2. **Upgrade buttons** — click → card form modal appears in-app → enter card → Subscribe
+3. **Monthly / Yearly toggle** — yearly saves 17% (2 months free)
+4. **Subscription Management** — shows next renewal date and amount; Cancel or Reactivate buttons
+5. **Invoice History** — list of all paid invoices; click **Download PDF** to get a branded Nexora PDF receipt
+
+### Test card (TEST mode only):
+```
+Card number: 4242 4242 4242 4242
+Expiry: any future date (e.g. 12/29)
+CVC: any 3 digits
+```
+
+### Keys already configured on server (.env):
+- `STRIPE_SECRET_KEY` — set ✅
+- `STRIPE_WEBHOOK_SECRET` — set ✅
+- All 6 price IDs (monthly + yearly for Basic/Pro/Business) — set ✅
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — set in Vercel ✅
+
+### To go live with real payments (when ready):
+1. Stripe Dashboard → toggle **Test → Live mode**
+2. Re-run `python3 internal_tools/stripe_create_products.py sk_live_...` to create live price IDs
+3. Create a new webhook endpoint in Stripe pointing to `https://nexora.cmdfleet.com/webhooks/stripe`
+4. Update `.env` on server with live keys → `bash deploy.sh`
+
+> Full step-by-step in `sops/stripe_setup.md`
