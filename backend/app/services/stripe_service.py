@@ -152,6 +152,127 @@ def cancel_subscription(stripe_customer_id: str) -> None:
         sc.v1.subscriptions.update(sub.id, {"cancel_at_period_end": True})
 
 
+def reactivate_subscription(stripe_customer_id: str) -> None:
+    """Re-enables a subscription that was set to cancel at period end."""
+    sc = _client()
+    subs = sc.v1.subscriptions.list({"customer": stripe_customer_id, "status": "active", "limit": 1})
+    for sub in subs.data:
+        if getattr(sub, "cancel_at_period_end", False):
+            sc.v1.subscriptions.update(sub.id, {"cancel_at_period_end": False})
+
+
+def _tier_from_price(price_id: str) -> str:
+    mapping = {
+        settings.stripe_price_basic:           "basic",
+        settings.stripe_price_pro:             "pro",
+        settings.stripe_price_business:        "business",
+        settings.stripe_price_basic_yearly:    "basic",
+        settings.stripe_price_pro_yearly:      "pro",
+        settings.stripe_price_business_yearly: "business",
+    }
+    return mapping.get(price_id, "")
+
+
+def get_active_subscription(stripe_customer_id: str) -> dict | None:
+    """Returns the active subscription details for the customer, or None."""
+    sc = _client()
+    subs = sc.v1.subscriptions.list({"customer": stripe_customer_id, "status": "active", "limit": 1})
+    if not subs.data:
+        return None
+
+    sub = subs.data[0]
+
+    price_id = ""
+    amount   = 0
+    currency = "usd"
+    interval = "month"
+    items_obj = getattr(sub, "items", None)
+    if items_obj:
+        items_list = getattr(items_obj, "data", [])
+        if items_list:
+            price = getattr(items_list[0], "price", None)
+            if price:
+                price_id = getattr(price, "id", "")
+                amount   = getattr(price, "unit_amount", 0) or 0
+                currency = getattr(price, "currency", "usd")
+                recurring = getattr(price, "recurring", None)
+                if recurring:
+                    interval = getattr(recurring, "interval", "month")
+
+    return {
+        "subscription_id":     sub.id,
+        "status":              getattr(sub, "status", ""),
+        "tier":                _tier_from_price(price_id),
+        "price_id":            price_id,
+        "amount":              amount,
+        "currency":            currency,
+        "interval":            interval,
+        "current_period_end":  getattr(sub, "current_period_end", None),
+        "cancel_at_period_end": getattr(sub, "cancel_at_period_end", False),
+    }
+
+
+def list_invoices(stripe_customer_id: str) -> list:
+    """Returns the last 24 invoices for the customer."""
+    sc = _client()
+    invs = sc.v1.invoices.list({"customer": stripe_customer_id, "limit": 24})
+    result = []
+    for inv in invs.data:
+        result.append({
+            "id":          inv.id,
+            "number":      getattr(inv, "number", None) or inv.id,
+            "amount_paid": getattr(inv, "amount_paid", 0) or 0,
+            "currency":    getattr(inv, "currency", "usd"),
+            "status":      getattr(inv, "status", ""),
+            "created":     getattr(inv, "created", 0),
+            "period_start": getattr(inv, "period_start", None),
+            "period_end":   getattr(inv, "period_end", None),
+        })
+    return result
+
+
+def get_invoice(invoice_id: str, stripe_customer_id: str) -> dict:
+    """Retrieves a single invoice and verifies it belongs to this customer."""
+    sc = _client()
+    inv = sc.v1.invoices.retrieve(invoice_id)
+
+    customer = getattr(inv, "customer", None)
+    customer_id = customer if isinstance(customer, str) else getattr(customer, "id", "")
+    if customer_id != stripe_customer_id:
+        raise ValueError("Invoice not found")
+
+    lines = []
+    lines_obj = getattr(inv, "lines", None)
+    if lines_obj:
+        for line in getattr(lines_obj, "data", []):
+            period = getattr(line, "period", None)
+            lines.append({
+                "description": getattr(line, "description", "") or "Nexora Subscription",
+                "amount":      getattr(line, "amount", 0) or 0,
+                "currency":    getattr(line, "currency", "usd"),
+                "period_start": getattr(period, "start", None) if period else None,
+                "period_end":   getattr(period, "end", None)   if period else None,
+            })
+
+    return {
+        "id":            inv.id,
+        "number":        getattr(inv, "number", None) or inv.id,
+        "amount_paid":   getattr(inv, "amount_paid", 0) or 0,
+        "amount_due":    getattr(inv, "amount_due",  0) or 0,
+        "currency":      getattr(inv, "currency", "usd"),
+        "status":        getattr(inv, "status", ""),
+        "created":       getattr(inv, "created", 0),
+        "period_start":  getattr(inv, "period_start", None),
+        "period_end":    getattr(inv, "period_end", None),
+        "customer_email": getattr(inv, "customer_email", ""),
+        "customer_name":  getattr(inv, "customer_name", ""),
+        "lines":         lines,
+        "subtotal":      getattr(inv, "subtotal", 0) or 0,
+        "tax":           getattr(inv, "tax",      0) or 0,
+        "total":         getattr(inv, "total",    0) or 0,
+    }
+
+
 def construct_webhook_event(payload: bytes, sig_header: str) -> stripe.Event:
     return stripe.Webhook.construct_event(
         payload, sig_header, settings.stripe_webhook_secret

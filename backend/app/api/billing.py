@@ -6,13 +6,16 @@ POST /billing/portal    — create a Customer Portal session (manage/cancel)
 POST /webhooks/stripe   — Stripe webhook handler (no auth — verified by signature)
 """
 import logging
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..models.base import get_db
 from ..models.client import Client
 from ..models.subscription import Subscription, TIERS
 from ..services import stripe_service
+from ..services import invoice_pdf
 from ..utils.auth import get_current_user
 from ..utils.config import settings
 
@@ -153,6 +156,101 @@ def create_portal(
         raise HTTPException(422, "Could not open billing portal")
 
     return {"url": url}
+
+
+# ── Subscription details ──────────────────────────────────────────────────────
+
+@router.get("/billing/subscription")
+def get_subscription(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.stripe_customer_id:
+        raise HTTPException(404, "No billing account found.")
+
+    sub = stripe_service.get_active_subscription(client.stripe_customer_id)
+    if not sub:
+        raise HTTPException(404, "No active subscription found.")
+    return sub
+
+
+# ── Invoice list ───────────────────────────────────────────────────────────────
+
+@router.get("/billing/invoices")
+def list_invoices(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.stripe_customer_id:
+        return []
+    return stripe_service.list_invoices(client.stripe_customer_id)
+
+
+# ── Download branded invoice PDF ───────────────────────────────────────────────
+
+@router.get("/billing/invoices/{invoice_id}/download")
+def download_invoice(
+    invoice_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.stripe_customer_id:
+        raise HTTPException(404, "No billing account found.")
+
+    inv_data = stripe_service.get_invoice(invoice_id, client.stripe_customer_id)
+    pdf_bytes = invoice_pdf.generate(inv_data, client)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="nexora-invoice-{invoice_id}.pdf"'},
+    )
+
+
+# ── Cancel subscription ────────────────────────────────────────────────────────
+
+@router.post("/billing/cancel")
+def cancel_billing(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.stripe_customer_id:
+        raise HTTPException(404, "No billing account found.")
+    stripe_service.cancel_subscription(client.stripe_customer_id)
+    return {"cancelled": True}
+
+
+# ── Reactivate subscription ────────────────────────────────────────────────────
+
+@router.post("/billing/reactivate")
+def reactivate_billing(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client or not client.stripe_customer_id:
+        raise HTTPException(404, "No billing account found.")
+    stripe_service.reactivate_subscription(client.stripe_customer_id)
+    return {"reactivated": True}
 
 
 # ── Stripe Webhook (public — verified by signature) ───────────────────────────

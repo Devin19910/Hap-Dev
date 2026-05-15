@@ -692,10 +692,64 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
   const [saved, setSaved]     = useState(false)
   const [usage, setUsage]         = useState<any>(null)
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly")
+  const [stripeSub, setStripeSub]         = useState<any>(null)
+  const [subLoading, setSubLoading]       = useState(false)
+  const [invoices, setInvoices]           = useState<any[]>([])
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelling, setCancelling]       = useState(false)
+  const [reactivating, setReactivating]   = useState(false)
 
   function refreshUsage() {
     if (!tenantId) return
     apiFetch(token, `/tenants/${tenantId}/usage`).catch(() => null).then(u => setUsage(u))
+  }
+
+  function fmtDate(ts: number | null) {
+    if (!ts) return "—"
+    return new Date(ts * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+  }
+
+  function fmtAmount(cents: number, currency: string) {
+    const sym: Record<string, string> = { usd: "$", inr: "₹", eur: "€", gbp: "£" }
+    const s = sym[(currency ?? "usd").toLowerCase()] ?? (currency ?? "USD").toUpperCase() + " "
+    return s + ((cents ?? 0) / 100).toFixed(2)
+  }
+
+  async function downloadInvoice(invoiceId: string) {
+    const r = await fetch(`${API}/billing/invoices/${invoiceId}/download`, {
+      headers: authHeaders(token),
+    })
+    if (!r.ok) return
+    const blob = await r.blob()
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement("a")
+    a.href     = url
+    a.download = `nexora-invoice-${invoiceId}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  async function cancelSub() {
+    setCancelling(true)
+    try {
+      await apiFetch(token, "/billing/cancel", { method: "POST" })
+      setCancelConfirm(false)
+      const sub = await apiFetch(token, "/billing/subscription").catch(() => null)
+      setStripeSub(sub)
+    } catch (e: any) { alert(e.message) }
+    finally { setCancelling(false) }
+  }
+
+  async function reactivateSub() {
+    setReactivating(true)
+    try {
+      await apiFetch(token, "/billing/reactivate", { method: "POST" })
+      const sub = await apiFetch(token, "/billing/subscription").catch(() => null)
+      setStripeSub(sub)
+    } catch (e: any) { alert(e.message) }
+    finally { setReactivating(false) }
   }
 
   useEffect(() => {
@@ -728,6 +782,19 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
       setLoading(false)
     })
   }, [token, tenantId])
+
+  useEffect(() => {
+    if (!tenantId || !usage?.tier || usage.tier === "free") return
+    setSubLoading(true)
+    Promise.all([
+      apiFetch(token, "/billing/subscription").catch(() => null),
+      apiFetch(token, "/billing/invoices").catch(() => []),
+    ]).then(([sub, invs]) => {
+      setStripeSub(sub)
+      setInvoices(Array.isArray(invs) ? invs : [])
+      setSubLoading(false)
+    })
+  }, [token, tenantId, usage?.tier])
 
   const set = (key: keyof TenantConfig) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setCfg(prev => ({ ...prev, [key]: e.target.value }))
@@ -809,18 +876,115 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
             </div>
           )}
 
-          {/* Cancel / manage */}
-          {usage.tier !== "free" && (
-            <button
-              onClick={async () => {
-                const r = await apiFetch(token, "/billing/portal", { method: "POST" }).catch(() => null)
-                if (r?.url) window.location.href = r.url
-              }}
-              className="mt-3 text-xs text-slate-400 hover:text-white transition underline"
-            >
-              Manage billing / cancel
-            </button>
+        </div>
+      )}
+
+      {/* Subscription management */}
+      {usage && usage.tier !== "free" && (
+        <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+          <h2 className="text-sm font-semibold text-white mb-4">Subscription Management</h2>
+
+          {subLoading ? (
+            <p className="text-slate-500 text-sm">Loading subscription details…</p>
+          ) : stripeSub ? (
+            <div className="flex flex-col gap-4">
+              {stripeSub.cancel_at_period_end ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                  <p className="text-amber-400 text-sm font-semibold mb-1">Subscription cancelling</p>
+                  <p className="text-amber-300 text-xs">
+                    Access continues until {fmtDate(stripeSub.current_period_end)}. You will not be charged again.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-slate-700/50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-0.5">Next renewal</p>
+                    <p className="text-sm font-semibold text-white">
+                      {fmtDate(stripeSub.current_period_end)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-400 mb-0.5">Amount</p>
+                    <p className="text-sm font-semibold text-sky-400">
+                      {fmtAmount(stripeSub.amount, stripeSub.currency)}/{stripeSub.interval}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 flex-wrap">
+                {stripeSub.cancel_at_period_end ? (
+                  <button
+                    onClick={reactivateSub}
+                    disabled={reactivating}
+                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm font-semibold transition"
+                  >
+                    {reactivating ? "Reactivating…" : "Reactivate subscription"}
+                  </button>
+                ) : cancelConfirm ? (
+                  <>
+                    <p className="text-xs text-red-400">Cancel at end of period?</p>
+                    <button
+                      onClick={cancelSub}
+                      disabled={cancelling}
+                      className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                    >
+                      {cancelling ? "Cancelling…" : "Yes, cancel"}
+                    </button>
+                    <button
+                      onClick={() => setCancelConfirm(false)}
+                      className="text-xs text-slate-400 hover:text-white transition"
+                    >
+                      Keep plan
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setCancelConfirm(true)}
+                    className="text-xs text-slate-400 hover:text-red-400 border border-slate-600 hover:border-red-500/40 px-4 py-2 rounded-lg transition"
+                  >
+                    Cancel subscription
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm">No active Stripe subscription found.</p>
           )}
+        </div>
+      )}
+
+      {/* Invoice history */}
+      {invoices.length > 0 && (
+        <div className="bg-slate-800 rounded-xl border border-white/5">
+          <div className="px-5 py-3 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-white">Invoice History</h2>
+          </div>
+          <div className="divide-y divide-white/5">
+            {invoices.map(inv => (
+              <div key={inv.id} className="px-5 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-white font-medium">{inv.number || inv.id.slice(-10)}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {fmtDate(inv.created)} · {fmtAmount(inv.amount_paid, inv.currency)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                    inv.status === "paid"
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-slate-700 text-slate-400"
+                  }`}>{inv.status}</span>
+                  <button
+                    onClick={() => downloadInvoice(inv.id)}
+                    className="text-xs text-sky-400 hover:text-sky-300 transition font-medium"
+                  >
+                    Download PDF
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

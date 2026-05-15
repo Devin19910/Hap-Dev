@@ -14,3 +14,4 @@ passlib[bcrypt]
 python-multipart
 httpx
 stripe
+reportlab
