@@ -54,6 +54,24 @@ async def get_tenant_scope(
         return None
 
 
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(_bearer),
+    db: Session = Depends(get_db),
+) -> AdminUser:
+    """Returns the authenticated user — works for both platform admins and tenant admins."""
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    from ..api.auth import decode_token
+    payload = decode_token(credentials.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    user = db.query(AdminUser).filter(AdminUser.id == user_id, AdminUser.is_active == True).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+
 async def require_platform_admin(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(_bearer),
     db: Session = Depends(get_db),
