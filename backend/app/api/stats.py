@@ -2,13 +2,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.utils.database import get_db
-from app.utils.auth import get_current_user, get_tenant_scope
-from app.models.admin_user import AdminUser
-from app.models.automation_job import AutomationJob
-from app.models.appointment import Appointment
-from app.models.contact import Contact
-from app.models.client import Client
+from ..models.base import get_db
+from ..utils.auth import get_current_user, get_tenant_scope
+from ..models.admin_user import AdminUser
+from ..models.automation_job import AutomationJob
+from ..models.appointment import Appointment
+from ..models.contact import Contact
+from ..models.client import Client
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
