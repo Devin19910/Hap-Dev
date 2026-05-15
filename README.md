@@ -67,6 +67,6 @@ See `sops/server_deployment.md` for the full production setup guide.
 | File | What it covers |
 |---|---|
 | `CLAUDE.md` | Master engineering reference — full feature inventory, models, APIs |
-| `MANUAL_SETUP_GUIDE.md` | Manual task checklist for things that can't be scripted |
+| `DEVINDER_KNOWLEDGE.md` | Devinder's personal knowledge base — credentials, system status, operations playbook |
 | `sops/` | Operating procedures for every integration and deployment step |
 | `CHATGPT_PROJECT_BRIEF.md` | Full project brief for AI context handoff |

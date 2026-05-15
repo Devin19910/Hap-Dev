@@ -284,7 +284,7 @@ All in `/sops/` — written so the India operator can follow them independently 
 - ✅ Stripe billing — in-app checkout modal (no redirect), subscription management card, branded PDF invoice download, cancel/reactivate
 
 ### What still needs to be done
-- ⏳ Meta business verification approval (submitted — waiting 1-5 days)
+- ⏳ Meta business verification — resubmitted 2026-05-15 via domain verification (rrrstores.com verified under Nexora portfolio) — decision within 48 hours
 - ⏳ After Meta approval: register phone +1-781-354-7229, generate permanent token, publish app
 - 🔜 First real paying client onboarded by cousin in Punjab
 - 🔜 Switch Stripe from TEST mode to LIVE mode (when ready for real payments)
@@ -364,5 +364,5 @@ Now that you have full context, here are things you can help with:
 
 Everything is in this repo. The main branch is always the latest working code.
 The `CLAUDE.md` file at the root is the master engineering reference for the codebase.
-The `MANUAL_SETUP_GUIDE.md` file tracks every manual task Dev needs to do.
+The `DEVINDER_KNOWLEDGE.md` file is Devinder's personal knowledge base — credentials, system status, operations playbook, and manual task reference.
 The `sops/` folder has step-by-step guides for every integration.

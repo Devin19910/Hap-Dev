@@ -1,9 +1,8 @@
-# Nexora — Manual Setup Guide
-### Everything you need to do by hand, in order
+# Devinder's Knowledge Base — Nexora Operations
+### Your complete reference for running, operating, and growing Nexora
 
-This document tracks every task that requires you to click, log in, or configure something
-outside of code. Work through it top to bottom. Each section tells you exactly where to go,
-what to click, and what to expect.
+Your personal playbook — credentials, system status, manual tasks, client onboarding, and
+what's coming next. Each section is self-contained so you can jump to any topic independently.
 
 ---
 
@@ -91,7 +90,7 @@ npm run dev        # starts at http://localhost:3000
 | Home server (laptop) setup | ✅ Done — 172.30.25.69, all 3 containers running | §5 |
 | Cloudflare Tunnel (public backend URL) | ✅ Done — https://nexora.cmdfleet.com | §6 |
 | Update Vercel with production backend URL | ✅ Done — NEXT_PUBLIC_API_URL set | §7 |
-| WhatsApp Meta app setup | ⏳ App created, webhook configured — waiting Meta business verification (1-5 days) | §8 |
+| WhatsApp Meta app setup | ⏳ Business verification resubmitted 2026-05-15 via domain (rrrstores.com) — decision within 48 hours | §8 |
 | Register first tenant (test) | ✅ Done — self-service signup tested end-to-end | §9 |
 | Cousin outreach script | ✅ Done — sops/cousin_outreach_script.md (Punjabi + Hindi + Roman) | — |
 | AI Calling Agent (Vapi) | ✅ Built + deployed — Business plan ($199/mo), Calls tab in dashboard | §13 |
