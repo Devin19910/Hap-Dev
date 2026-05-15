@@ -73,7 +73,7 @@ def create_checkout(
         raise HTTPException(422, str(e))
     except Exception as e:
         logger.error("Stripe checkout error: %s", e)
-        raise HTTPException(502, "Could not create checkout session")
+        raise HTTPException(422, "Could not create checkout session")
 
     return {"url": url}
 
@@ -115,7 +115,7 @@ def subscribe(
         raise HTTPException(422, str(e))
     except Exception as e:
         logger.error("Stripe subscribe error: %s", e)
-        raise HTTPException(502, str(e))
+        raise HTTPException(422, str(e))
 
     # If subscription is active immediately, update DB now
     if result["status"] == "active":
@@ -150,7 +150,7 @@ def create_portal(
         url = stripe_service.create_portal_session(client.stripe_customer_id)
     except Exception as e:
         logger.error("Stripe portal error: %s", e)
-        raise HTTPException(502, "Could not open billing portal")
+        raise HTTPException(422, "Could not open billing portal")
 
     return {"url": url}
 

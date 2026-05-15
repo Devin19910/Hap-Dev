@@ -100,16 +100,19 @@ def create_subscription(
 
     sc = _client()
 
-    # Attach payment method to customer and set as default
-    sc.payment_methods.attach(payment_method_id, {"customer": customer_id})
+    # Attach payment method to customer — capture the returned object for the real ID
+    pm = sc.payment_methods.attach(payment_method_id, {"customer": customer_id})
+    real_pm_id = pm.id
+
     sc.customers.update(customer_id, {
-        "invoice_settings": {"default_payment_method": payment_method_id}
+        "invoice_settings": {"default_payment_method": real_pm_id}
     })
 
-    # Create the subscription
+    # Create the subscription, explicitly setting the payment method
     sub = sc.subscriptions.create({
         "customer": customer_id,
         "items": [{"price": price_id}],
+        "default_payment_method": real_pm_id,
         "payment_behavior": "default_incomplete",
         "payment_settings": {"save_default_payment_method": "on_subscription"},
         "expand": ["latest_invoice.payment_intent"],
