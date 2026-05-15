@@ -156,15 +156,140 @@ function Sidebar({ tab, setTab, user, onLogout }: {
   )
 }
 
+// ── Value Dashboard (tenant-facing impact panel) ──────────────────────────
+
+type ValueStats = {
+  messages_this_month: number
+  hours_saved_this_month: number
+  appointments_this_month: number
+  leads_this_month: number
+  total_messages: number
+  total_appointments: number
+  total_leads: number
+}
+
+function ValueDashboard({ token }: { token: string }) {
+  const [stats, setStats]   = useState<ValueStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const monthName = new Date().toLocaleString("en-US", { month: "long" })
+
+  useEffect(() => {
+    apiFetch(token, "/stats/value")
+      .then(s => { setStats(s); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [token])
+
+  if (loading) return (
+    <div className="bg-slate-800 rounded-xl border border-white/5 p-6 animate-pulse">
+      <div className="h-4 w-48 bg-slate-700 rounded mb-4" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <div key={i} className="h-20 bg-slate-700 rounded-xl" />)}
+      </div>
+    </div>
+  )
+
+  if (!stats) return null
+
+  const impactCards = [
+    {
+      icon: "💬",
+      value: stats.messages_this_month,
+      label: "Customer messages handled by AI",
+      sub: `${stats.total_messages} total all time`,
+      color: "from-sky-500/20 to-sky-500/5 border-sky-500/30",
+      valueColor: "text-sky-400",
+    },
+    {
+      icon: "⏱",
+      value: `${stats.hours_saved_this_month}h`,
+      label: "Hours saved this month",
+      sub: "Based on 5 min per reply",
+      color: "from-violet-500/20 to-violet-500/5 border-violet-500/30",
+      valueColor: "text-violet-400",
+    },
+    {
+      icon: "📅",
+      value: stats.appointments_this_month,
+      label: "Appointments captured automatically",
+      sub: `${stats.total_appointments} total all time`,
+      color: "from-green-500/20 to-green-500/5 border-green-500/30",
+      valueColor: "text-green-400",
+    },
+    {
+      icon: "👤",
+      value: stats.leads_this_month,
+      label: "New leads added to your CRM",
+      sub: `${stats.total_leads} total all time`,
+      color: "from-amber-500/20 to-amber-500/5 border-amber-500/30",
+      valueColor: "text-amber-400",
+    },
+  ]
+
+  const hasActivity = stats.total_messages > 0
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-white">Nexora Impact — {monthName}</h2>
+          <p className="text-slate-400 text-sm mt-0.5">Here is what your AI assistant did for your business this month</p>
+        </div>
+        {hasActivity && (
+          <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">
+            AI is working ✓
+          </span>
+        )}
+      </div>
+
+      {/* Impact cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {impactCards.map(c => (
+          <div key={c.label} className={`rounded-xl p-4 border bg-gradient-to-b ${c.color}`}>
+            <div className="text-2xl mb-2">{c.icon}</div>
+            <p className={`text-3xl font-bold ${c.valueColor}`}>{c.value}</p>
+            <p className="text-white text-xs font-medium mt-1 leading-tight">{c.label}</p>
+            <p className="text-slate-500 text-xs mt-1">{c.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Zero state nudge */}
+      {!hasActivity && (
+        <div className="bg-slate-800/60 border border-white/5 rounded-xl px-5 py-4 text-sm text-slate-400">
+          No activity yet — once customers start messaging your WhatsApp number, your stats will appear here automatically.
+        </div>
+      )}
+
+      {/* Plain-language summary */}
+      {hasActivity && (
+        <div className="bg-slate-800 border border-white/5 rounded-xl px-5 py-4">
+          <p className="text-slate-300 text-sm leading-relaxed">
+            This month your AI assistant replied to{" "}
+            <span className="text-white font-semibold">{stats.messages_this_month} customer messages</span>,
+            saving you roughly{" "}
+            <span className="text-white font-semibold">{stats.hours_saved_this_month} hours</span>{" "}
+            of manual work. It automatically added{" "}
+            <span className="text-white font-semibold">{stats.leads_this_month} new contacts</span>{" "}
+            to your CRM and captured{" "}
+            <span className="text-white font-semibold">{stats.appointments_this_month} appointment{stats.appointments_this_month !== 1 ? "s" : ""}</span>{" "}
+            — all without you lifting a finger.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Overview tab ──────────────────────────────────────────────────────────
 
-function OverviewTab({ token, clients, jobs, conversations }: {
-  token: string; clients: Client[]; jobs: Job[]; conversations: Conversation[]
+function OverviewTab({ token, clients, jobs, conversations, user }: {
+  token: string; clients: Client[]; jobs: Job[]; conversations: Conversation[]; user: AdminUser
 }) {
+  const isTenant    = user.tenant_id !== null && user.tenant_id !== undefined
   const totalTokens = jobs.reduce((s, j) => s + (j.tokens_used ?? 0), 0)
-  const doneJobs    = jobs.filter(j => j.status === "done").length
 
-  const stats = [
+  const platformStats = [
     { label: "Active Clients",   value: clients.length,               color: "text-sky-400" },
     { label: "Total Jobs",       value: jobs.length,                  color: "text-violet-400" },
     { label: "WA Conversations", value: conversations.length,         color: "text-green-400" },
@@ -180,52 +305,61 @@ function OverviewTab({ token, clients, jobs, conversations }: {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-bold text-white">Overview</h1>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(s => (
-          <div key={s.label} className="bg-slate-800 rounded-xl p-4 border border-white/5">
-            <p className="text-slate-400 text-xs mb-1">{s.label}</p>
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
 
-      <div className="bg-slate-800 rounded-xl border border-white/5">
-        <div className="px-5 py-3 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white">Recent Jobs</h2>
-        </div>
-        {recent.length === 0 ? (
-          <p className="px-5 py-8 text-slate-500 text-sm text-center">No jobs yet</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-slate-400 text-xs border-b border-white/5">
-                <th className="px-5 py-2 text-left">Time</th>
-                <th className="px-5 py-2 text-left">Client</th>
-                <th className="px-5 py-2 text-left">Provider</th>
-                <th className="px-5 py-2 text-left">Status</th>
-                <th className="px-5 py-2 text-right">Tokens</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map(j => (
-                <tr key={j.id} className="border-b border-white/5 hover:bg-white/5 transition">
-                  <td className="px-5 py-2.5 text-slate-400 text-xs">{new Date(j.created_at).toLocaleString()}</td>
-                  <td className="px-5 py-2.5 text-white">{clientName(j.client_id)}</td>
-                  <td className="px-5 py-2.5 capitalize text-slate-300">{j.provider}</td>
-                  <td className="px-5 py-2.5">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      j.status === "done" ? "bg-green-500/20 text-green-400"
-                      : j.status === "failed" ? "bg-red-500/20 text-red-400"
-                      : "bg-amber-500/20 text-amber-400"
-                    }`}>{j.status}</span>
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-slate-400">{j.tokens_used}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* Tenant users see value dashboard */}
+      {isTenant && <ValueDashboard token={token} />}
+
+      {/* Platform admins see platform-wide stats */}
+      {!isTenant && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {platformStats.map(s => (
+              <div key={s.label} className="bg-slate-800 rounded-xl p-4 border border-white/5">
+                <p className="text-slate-400 text-xs mb-1">{s.label}</p>
+                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-slate-800 rounded-xl border border-white/5">
+            <div className="px-5 py-3 border-b border-white/10">
+              <h2 className="text-sm font-semibold text-white">Recent Jobs</h2>
+            </div>
+            {recent.length === 0 ? (
+              <p className="px-5 py-8 text-slate-500 text-sm text-center">No jobs yet</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 text-xs border-b border-white/5">
+                    <th className="px-5 py-2 text-left">Time</th>
+                    <th className="px-5 py-2 text-left">Client</th>
+                    <th className="px-5 py-2 text-left">Provider</th>
+                    <th className="px-5 py-2 text-left">Status</th>
+                    <th className="px-5 py-2 text-right">Tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map(j => (
+                    <tr key={j.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                      <td className="px-5 py-2.5 text-slate-400 text-xs">{new Date(j.created_at).toLocaleString()}</td>
+                      <td className="px-5 py-2.5 text-white">{clientName(j.client_id)}</td>
+                      <td className="px-5 py-2.5 capitalize text-slate-300">{j.provider}</td>
+                      <td className="px-5 py-2.5">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          j.status === "done" ? "bg-green-500/20 text-green-400"
+                          : j.status === "failed" ? "bg-red-500/20 text-red-400"
+                          : "bg-amber-500/20 text-amber-400"
+                        }`}>{j.status}</span>
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-slate-400">{j.tokens_used}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -2344,7 +2478,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-900 text-white flex">
       <Sidebar tab={tab} setTab={setTab} user={user} onLogout={handleLogout} />
       <main className="flex-1 p-6 overflow-y-auto">
-        {tab === "overview"  && <OverviewTab token={token} clients={clients} jobs={allJobs} conversations={conversations} />}
+        {tab === "overview"  && <OverviewTab token={token} clients={clients} jobs={allJobs} conversations={conversations} user={user} />}
         {tab === "clients"   && <ClientsTab token={token} clients={clients} reload={() => loadClients(token)} />}
         {tab === "jobs"      && <JobsTab token={token} clients={clients} />}
         {tab === "whatsapp"  && <WhatsAppTab token={token} clients={clients} />}
