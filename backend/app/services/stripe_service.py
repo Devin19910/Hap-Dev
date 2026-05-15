@@ -79,6 +79,64 @@ def get_or_create_customer(email: str, name: str) -> str:
     return customer.id
 
 
+def create_subscription(
+    customer_id: str,
+    payment_method_id: str,
+    tier: str,
+    billing_period: str = "monthly",
+) -> dict:
+    """
+    Attaches a PaymentMethod to the customer and creates a subscription directly.
+    Returns {"subscription_id": ..., "status": ..., "client_secret": ...}.
+    The client_secret is only set when SCA (3D Secure) confirmation is required.
+    """
+    key = (tier, billing_period)
+    price_fn = PRICE_MAP.get(key)
+    if not price_fn:
+        raise ValueError(f"Unknown tier/period: {tier}/{billing_period}")
+    price_id = price_fn()
+    if not price_id:
+        raise ValueError(f"Price ID not configured for {tier}/{billing_period}")
+
+    sc = _client()
+
+    # Attach payment method to customer and set as default
+    sc.payment_methods.attach(payment_method_id, {"customer": customer_id})
+    sc.customers.update(customer_id, {
+        "invoice_settings": {"default_payment_method": payment_method_id}
+    })
+
+    # Create the subscription
+    sub = sc.subscriptions.create({
+        "customer": customer_id,
+        "items": [{"price": price_id}],
+        "payment_behavior": "default_incomplete",
+        "payment_settings": {"save_default_payment_method": "on_subscription"},
+        "expand": ["latest_invoice.payment_intent"],
+        "metadata": {"tier": tier},
+    })
+
+    status = sub.status
+    client_secret = None
+    if status == "incomplete":
+        pi = sub.latest_invoice.payment_intent
+        client_secret = pi.client_secret if pi else None
+
+    return {
+        "subscription_id": sub.id,
+        "status": status,
+        "client_secret": client_secret,
+    }
+
+
+def cancel_subscription(stripe_customer_id: str) -> None:
+    """Cancels the active subscription for a customer at period end."""
+    sc = _client()
+    subs = sc.subscriptions.list({"customer": stripe_customer_id, "status": "active", "limit": 1})
+    for sub in subs.data:
+        sc.subscriptions.update(sub.id, {"cancel_at_period_end": True})
+
+
 def construct_webhook_event(payload: bytes, sig_header: str) -> stripe.Event:
     return stripe.Webhook.construct_event(
         payload, sig_header, settings.stripe_webhook_secret

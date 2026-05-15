@@ -25,6 +25,12 @@ class CheckoutRequest(BaseModel):
     billing_period: str = "monthly"  # monthly | yearly
 
 
+class SubscribeRequest(BaseModel):
+    tier: str
+    payment_method_id: str
+    billing_period: str = "monthly"
+
+
 # ── Checkout ──────────────────────────────────────────────────────────────────
 
 @router.post("/billing/checkout")
@@ -70,6 +76,56 @@ def create_checkout(
         raise HTTPException(502, "Could not create checkout session")
 
     return {"url": url}
+
+
+# ── In-app Subscribe (no redirect) ───────────────────────────────────────────
+
+@router.post("/billing/subscribe")
+def subscribe(
+    body: SubscribeRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if body.tier not in ("basic", "pro", "business"):
+        raise HTTPException(400, "Invalid tier")
+    if not settings.stripe_secret_key:
+        raise HTTPException(503, "Stripe is not configured")
+
+    client_id = current_user.tenant_id
+    if not client_id:
+        raise HTTPException(400, "Billing is only available for tenant accounts.")
+
+    client = db.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        raise HTTPException(404, "Client not found")
+
+    if not client.stripe_customer_id:
+        customer_id = stripe_service.get_or_create_customer(client.email, client.name)
+        client.stripe_customer_id = customer_id
+        db.commit()
+
+    try:
+        result = stripe_service.create_subscription(
+            customer_id       = client.stripe_customer_id,
+            payment_method_id = body.payment_method_id,
+            tier              = body.tier,
+            billing_period    = body.billing_period,
+        )
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        logger.error("Stripe subscribe error: %s", e)
+        raise HTTPException(502, str(e))
+
+    # If subscription is active immediately, update DB now
+    if result["status"] == "active":
+        sub = db.query(Subscription).filter(Subscription.client_id == client_id).first()
+        if sub:
+            sub.tier          = body.tier
+            sub.monthly_limit = TIERS[body.tier]
+            db.commit()
+
+    return result
 
 
 # ── Customer Portal ───────────────────────────────────────────────────────────

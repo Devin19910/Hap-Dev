@@ -1,5 +1,9 @@
 "use client"
 import { useEffect, useState, useCallback } from "react"
+import { loadStripe } from "@stripe/stripe-js"
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js"
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "")
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 
@@ -553,24 +557,125 @@ function JobsTab({ token, clients }: { token: string; clients: Client[] }) {
   )
 }
 
-// ── Upgrade button ────────────────────────────────────────────────────────
+// ── In-app checkout modal ─────────────────────────────────────────────────
 
-function UpgradeButton({ token, tier, label, highlight }: { token: string; tier: string; label: string; highlight?: boolean }) {
+const PLAN_LABELS: Record<string, { name: string; monthly: string; yearly: string }> = {
+  basic:    { name: "Basic",    monthly: "$29/mo",  yearly: "$290/yr" },
+  pro:      { name: "Pro",      monthly: "$99/mo",  yearly: "$990/yr" },
+  business: { name: "Business", monthly: "$199/mo", yearly: "$1,990/yr" },
+}
+
+function CheckoutForm({ token, tier, billingPeriod, onSuccess, onClose }:
+  { token: string; tier: string; billingPeriod: string; onSuccess: () => void; onClose: () => void }) {
+  const stripe   = useStripe()
+  const elements = useElements()
+  const [error, setError]     = useState("")
   const [loading, setLoading] = useState(false)
-  async function go() {
-    setLoading(true)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!stripe || !elements) return
+    setLoading(true); setError("")
+
+    const card = elements.getElement(CardElement)
+    if (!card) { setLoading(false); return }
+
+    const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({ type: "card", card })
+    if (pmError) { setError(pmError.message ?? "Card error"); setLoading(false); return }
+
     try {
-      const r = await apiFetch(token, "/billing/checkout", { method: "POST", body: JSON.stringify({ tier }) })
-      if (r?.url) window.location.href = r.url
-    } catch { setLoading(false) }
+      const result = await apiFetch(token, "/billing/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ tier, billing_period: billingPeriod, payment_method_id: paymentMethod.id }),
+      })
+
+      if (result?.client_secret) {
+        const { error: confirmError } = await stripe.confirmCardPayment(result.client_secret)
+        if (confirmError) { setError(confirmError.message ?? "Payment failed"); setLoading(false); return }
+      }
+
+      onSuccess()
+    } catch (err: any) {
+      setError(err?.message ?? "Payment failed. Please try again.")
+      setLoading(false)
+    }
   }
+
+  const plan = PLAN_LABELS[tier]
+  const price = billingPeriod === "yearly" ? plan.yearly : plan.monthly
+
   return (
-    <button onClick={go} disabled={loading}
-      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50 ${
-        highlight ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-sky-600 hover:bg-sky-500 text-white"
-      }`}>
-      {loading ? "Redirecting…" : label}
-    </button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between">
+        <span className="text-white font-semibold">{plan.name} Plan</span>
+        <span className="text-sky-400 font-bold">{price}</span>
+      </div>
+
+      <div>
+        <label className="text-xs text-slate-400 mb-1.5 block">Card details</label>
+        <div className="bg-slate-700 border border-white/10 rounded-lg p-3">
+          <CardElement options={{
+            style: {
+              base: { color: "#f1f5f9", fontSize: "14px", "::placeholder": { color: "#64748b" } },
+              invalid: { color: "#f87171" },
+            }
+          }} />
+        </div>
+      </div>
+
+      {error && <p className="text-red-400 text-xs">{error}</p>}
+
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onClose}
+          className="flex-1 px-4 py-2 rounded-lg text-sm text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition">
+          Cancel
+        </button>
+        <button type="submit" disabled={loading || !stripe}
+          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-50 transition">
+          {loading ? "Processing…" : `Pay ${price}`}
+        </button>
+      </div>
+
+      <p className="text-xs text-slate-500 text-center">Secured by Stripe · Cancel anytime</p>
+    </form>
+  )
+}
+
+function CheckoutModal({ token, tier, billingPeriod, onSuccess, onClose }:
+  { token: string; tier: string; billingPeriod: string; onSuccess: () => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-white font-bold text-lg">Upgrade Plan</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none">×</button>
+        </div>
+        <Elements stripe={stripePromise}>
+          <CheckoutForm token={token} tier={tier} billingPeriod={billingPeriod} onSuccess={onSuccess} onClose={onClose} />
+        </Elements>
+      </div>
+    </div>
+  )
+}
+
+function UpgradeButton({ token, tier, label, highlight, billingPeriod, onSuccess }:
+  { token: string; tier: string; label: string; highlight?: boolean; billingPeriod: string; onSuccess: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button onClick={() => setOpen(true)}
+        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+          highlight ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-sky-600 hover:bg-sky-500 text-white"
+        }`}>
+        {label}
+      </button>
+      {open && (
+        <CheckoutModal token={token} tier={tier} billingPeriod={billingPeriod}
+          onSuccess={() => { setOpen(false); onSuccess() }}
+          onClose={() => setOpen(false)} />
+      )}
+    </>
   )
 }
 
@@ -585,7 +690,13 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
-  const [usage, setUsage]     = useState<any>(null)
+  const [usage, setUsage]         = useState<any>(null)
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly")
+
+  function refreshUsage() {
+    if (!tenantId) return
+    apiFetch(token, `/tenants/${tenantId}/usage`).catch(() => null).then(u => setUsage(u))
+  }
 
   useEffect(() => {
     if (!tenantId) return
@@ -647,9 +758,18 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
       {/* Usage + Billing */}
       {usage && (
         <div className="bg-slate-800 rounded-xl p-5 border border-white/5">
+          {/* Current plan badge */}
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-white capitalize">{usage.tier} Plan</p>
-            <span className="text-xs text-slate-400">{usage.requests_used} / {usage.monthly_limit} requests used</span>
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${
+                usage.tier === "business" ? "bg-purple-600 text-white" :
+                usage.tier === "pro"      ? "bg-sky-600 text-white" :
+                usage.tier === "basic"    ? "bg-emerald-600 text-white" :
+                "bg-slate-600 text-slate-300"
+              }`}>{usage.tier}</span>
+              <p className="text-sm font-semibold text-white">Current Plan</p>
+            </div>
+            <span className="text-xs text-slate-400">{usage.requests_used} / {usage.monthly_limit} reqs</span>
           </div>
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
             <div className={`h-2 rounded-full transition-all ${usagePct > 80 ? "bg-red-500" : usagePct > 60 ? "bg-amber-500" : "bg-sky-500"}`}
@@ -657,23 +777,39 @@ function SettingsTab({ token, user }: { token: string; user: AdminUser }) {
           </div>
           <p className="text-xs text-slate-500 mt-2">{usage.remaining} requests remaining this month</p>
 
-          {/* Upgrade buttons */}
+          {/* Upgrade section */}
           {usage.tier !== "business" && (
             <div className="mt-4 pt-4 border-t border-white/5">
-              <p className="text-xs text-slate-400 mb-3">Upgrade your plan</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-slate-400">Upgrade your plan</p>
+                {/* Billing period toggle */}
+                <div className="flex items-center gap-1 bg-slate-700 rounded-lg p-0.5">
+                  <button onClick={() => setBillingPeriod("monthly")}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${billingPeriod === "monthly" ? "bg-slate-500 text-white" : "text-slate-400 hover:text-white"}`}>
+                    Monthly
+                  </button>
+                  <button onClick={() => setBillingPeriod("yearly")}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition ${billingPeriod === "yearly" ? "bg-slate-500 text-white" : "text-slate-400 hover:text-white"}`}>
+                    Yearly <span className="text-emerald-400">–17%</span>
+                  </button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {usage.tier === "free" && (
-                  <UpgradeButton token={token} tier="basic" label="Basic — $29/mo" />
+                  <UpgradeButton token={token} tier="basic" billingPeriod={billingPeriod} onSuccess={refreshUsage}
+                    label={`Basic — ${billingPeriod === "yearly" ? "$290/yr" : "$29/mo"}`} />
                 )}
                 {(usage.tier === "free" || usage.tier === "basic") && (
-                  <UpgradeButton token={token} tier="pro" label="Pro — $99/mo" />
+                  <UpgradeButton token={token} tier="pro" billingPeriod={billingPeriod} onSuccess={refreshUsage}
+                    label={`Pro — ${billingPeriod === "yearly" ? "$990/yr" : "$99/mo"}`} />
                 )}
-                <UpgradeButton token={token} tier="business" label="Business — $199/mo" highlight />
+                <UpgradeButton token={token} tier="business" billingPeriod={billingPeriod} onSuccess={refreshUsage}
+                  label={`Business — ${billingPeriod === "yearly" ? "$1,990/yr" : "$199/mo"}`} highlight />
               </div>
             </div>
           )}
 
-          {/* Manage billing portal */}
+          {/* Cancel / manage */}
           {usage.tier !== "free" && (
             <button
               onClick={async () => {
