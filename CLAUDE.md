@@ -433,7 +433,7 @@ All in `sops/` — written so the India operator can follow them independently.
 | 21 | Landing page — Plumbers + Real Estate verticals added | ✅ Done |
 | 22 | Cousin Punjab outreach script (Punjabi + Hindi + Roman) | ✅ Done — sops/cousin_outreach_script.md |
 | 23 | AI Calling Agent (Vapi) — Business plan tier | ✅ Done |
-| 24 | Billing / Stripe payment integration | 🔜 Planned |
+| 24 | Billing / Stripe payment integration — in-app checkout modal, no redirect | ✅ Done |
 | 25 | Email notifications (appointment confirmations) | 🔜 Planned |
 | 26 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
 | 27 | Mobile app (React Native) | 🔜 Planned |
