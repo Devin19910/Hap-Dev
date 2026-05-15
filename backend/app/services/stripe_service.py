@@ -16,7 +16,7 @@ PRICE_MAP = {
 }
 
 
-def _client() -> stripe.Stripe:
+def _client() -> stripe.StripeClient:
     return stripe.StripeClient(settings.stripe_secret_key)
 
 
