@@ -80,26 +80,76 @@ In their Settings page:
 ## PHASE 4 — WhatsApp Setup
 
 > ⚠️ **NOTE:** Nexora's WhatsApp app is waiting for Meta approval (expected soon).
-> Once Meta approves, all clients go live automatically — nothing extra needed from them.
+> Once Meta approves, all clients go live automatically.
 
-**All clients use Nexora's shared WhatsApp number. The client does NOT need a Facebook Business account — you handle everything.**
+**Every client needs their own WhatsApp number connected to Nexora.** This is how every serious platform works — customers message the business's own number and name, not a shared one. If everyone shared one number, customers would not trust it ("who is this?").
 
-Here is what you tell the client:
+---
 
-> *"Aapke customers hamare Nexora WhatsApp number pe message karenge. Jab bhi koi message aayega, AI khud reply karega. Aapko kuch nahi karna — bas dashboard check karo."*
+### Real example — John's Pizza Restaurant
 
-### What you do in the dashboard:
+John has a pizza place. He has no LLC, no EIN, no tech setup. Here is how you connect him:
 
-1. Go to **Tenants** tab → click their account → click **Settings**
+**What John needs:**
+- A personal Facebook account (almost everyone has one)
+- His existing phone number (the one customers already call/WhatsApp)
+- 20 minutes
+
+**Step 1 — Create a free Facebook Business account (5 minutes)**
+
+Tell John to do this, or do it with him on screen share:
+
+1. Go to **business.facebook.com**
+2. Click **Create Account**
+3. Log in with his personal Facebook
+4. Business name → type `John's Pizza` (no legal name needed, no documents needed)
+5. His email → enter it
+6. Click **Submit** → Business account is created ✅
+
+> He does NOT need LLC, EIN, or any legal documents. A business name is enough.
+
+**Step 2 — Add his phone number to WhatsApp Business Platform (10 minutes)**
+
+1. Inside his Facebook Business account → go to **Settings** (bottom left)
+2. Click **WhatsApp accounts** → click **Add**
+3. Click **Create a WhatsApp account**
+4. Enter his phone number → Meta sends a verification code via SMS or call
+5. Enter the code → number is verified ✅
+6. Meta gives him a **Phone Number ID** — copy it (looks like: `107839281234567`)
+7. He will also need an **Access Token** — click **System Users** → create one → copy the token
+
+> If John's number is already used on regular WhatsApp or WhatsApp Business app — he will need to delete it from that app first, then add it here. Meta cannot use the same number in two places.
+
+**Step 3 — Enter his credentials in the Nexora dashboard**
+
+1. Go to **Tenants** tab → click his account → click **Settings**
 2. Scroll to **WhatsApp Cloud API** section
-3. Fill in (these are the same for ALL clients — Nexora's shared credentials):
-   - **Phone Number ID** → `1091106447424755`
-   - **Access Token** → ask Dev for the current token (saved in DEVINDER_KNOWLEDGE.md)
-   - **Verify Token** → `nexora-verify-2026`
-   - **Business Name** → their business name
-4. Click **Save Settings**
+3. Fill in:
+   - **Phone Number ID** → the number ID from Step 2
+   - **Access Token** → the token from Step 2
+   - **Verify Token** → type `nexora-johnspizza-2026` (any secret word, keep it simple)
+   - **Business Name** → `John's Pizza`
+4. Click **Save Settings** ✅
 
-> **That's it.** No Facebook, no Meta developer account, no waiting. The client just tells their customers to WhatsApp the Nexora number.
+**Step 4 — Register the webhook with Meta**
+
+1. In Facebook Business → go to his WhatsApp app settings → **Webhooks**
+2. Webhook URL → `https://nexora.cmdfleet.com/webhooks/whatsapp/TENANT_ID`
+   - Replace `TENANT_ID` with his actual ID (Tenants tab → click his name → copy ID from URL)
+3. Verify Token → same word you set above (`nexora-johnspizza-2026`)
+4. Click **Verify and Save**
+5. Subscribe to → **messages** ✅
+
+> Now when any customer WhatsApps John's number, the AI picks it up and replies automatically. John's customers see "John's Pizza" — they never see Nexora.
+
+---
+
+### Quick-reference — 2 types of clients
+
+| Client type | What they need | Your work |
+|---|---|---|
+| **Has nothing** (like John) | Personal Facebook account + their phone number | Walk them through Steps 1–4 above (~20 min) |
+| **Already has WhatsApp Business API** | Just give you their Phone Number ID + token | Enter credentials in dashboard only (~5 min) |
 
 ---
 
