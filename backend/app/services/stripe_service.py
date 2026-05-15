@@ -101,15 +101,15 @@ def create_subscription(
     sc = _client()
 
     # Attach payment method to customer — capture the returned object for the real ID
-    pm = sc.payment_methods.attach(payment_method_id, {"customer": customer_id})
+    pm = sc.v1.payment_methods.attach(payment_method_id, {"customer": customer_id})
     real_pm_id = pm.id
 
-    sc.customers.update(customer_id, {
+    sc.v1.customers.update(customer_id, {
         "invoice_settings": {"default_payment_method": real_pm_id}
     })
 
     # Create the subscription, explicitly setting the payment method
-    sub = sc.subscriptions.create({
+    sub = sc.v1.subscriptions.create({
         "customer": customer_id,
         "items": [{"price": price_id}],
         "default_payment_method": real_pm_id,
@@ -118,22 +118,28 @@ def create_subscription(
         "metadata": {"tier": tier},
     })
 
-    status = sub.status
-
-    # Retrieve client_secret for SCA if subscription is incomplete
+    # Pay the invoice immediately server-side (works for non-SCA cards like 4242)
+    # For SCA cards, the pay() call will raise an error and we fall back to client_secret
     client_secret = None
-    if status == "incomplete":
+    if sub.status == "incomplete" and sub.latest_invoice:
         try:
-            invoice = sc.invoices.retrieve(sub.latest_invoice, {"expand": ["payment_intent"]})
-            pi = getattr(invoice, "payment_intent", None)
-            if pi:
-                client_secret = pi.client_secret
+            sc.v1.invoices.pay(sub.latest_invoice, {"payment_method": real_pm_id})
+            sub = sc.v1.subscriptions.retrieve(sub.id)  # refresh status
+        except stripe.CardError:
+            raise  # real card decline — propagate to caller
         except Exception:
-            pass
+            # SCA required or other — try to get confirmation secret for frontend
+            try:
+                inv = sc.v1.invoices.retrieve(sub.latest_invoice)
+                cs = getattr(inv, "confirmation_secret", None)
+                if cs:
+                    client_secret = getattr(cs, "client_secret", None)
+            except Exception:
+                pass
 
     return {
         "subscription_id": sub.id,
-        "status": status,
+        "status": sub.status,
         "client_secret": client_secret,
     }
 
@@ -141,9 +147,9 @@ def create_subscription(
 def cancel_subscription(stripe_customer_id: str) -> None:
     """Cancels the active subscription for a customer at period end."""
     sc = _client()
-    subs = sc.subscriptions.list({"customer": stripe_customer_id, "status": "active", "limit": 1})
+    subs = sc.v1.subscriptions.list({"customer": stripe_customer_id, "status": "active", "limit": 1})
     for sub in subs.data:
-        sc.subscriptions.update(sub.id, {"cancel_at_period_end": True})
+        sc.v1.subscriptions.update(sub.id, {"cancel_at_period_end": True})
 
 
 def construct_webhook_event(payload: bytes, sig_header: str) -> stripe.Event:
