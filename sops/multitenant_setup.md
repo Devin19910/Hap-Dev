@@ -184,20 +184,17 @@ Response:
 }
 ```
 
-### Upgrading a tenant's tier (manual — no billing system yet)
+### Upgrading a tenant's tier
 
-Connect to the database and run:
-```sql
-UPDATE subscriptions
-SET tier = 'basic', monthly_limit = 500
-WHERE client_id = 'TENANT_ID_HERE';
-```
+**Self-service (recommended):** The tenant logs into their dashboard → Settings → clicks an upgrade button → pays with card in-app. Their plan updates automatically when payment succeeds.
 
-Or via docker:
+**Manual override** (if needed — e.g. you're gifting a plan or fixing a billing error):
 ```bash
-docker compose exec db psql -U postgres -d ai_automation -c \
+docker compose -f docker-compose.prod.yml exec db psql -U nexora -d ai_automation -c \
   "UPDATE subscriptions SET tier='basic', monthly_limit=500 WHERE client_id='TENANT_UUID';"
 ```
+
+Available tier values: `free` (50/mo), `basic` (500/mo), `pro` (5000/mo), `business` (99999/mo)
 
 ---
 

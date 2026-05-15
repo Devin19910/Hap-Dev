@@ -6,15 +6,21 @@
 ## OVERVIEW
 
 When Stripe is configured, tenants can upgrade their plan directly from the dashboard
-without you doing anything manually. They click "Upgrade", pay on Stripe's hosted
-checkout page, and their plan upgrades automatically.
+without you doing anything manually. They click "Upgrade", enter their card in the
+**in-app checkout modal** (no redirect to Stripe's website), and their plan upgrades
+automatically.
 
 **What Stripe handles:**
 - Collecting card payments (you never touch card data)
-- Recurring monthly billing
+- Recurring monthly/yearly billing
 - Failed payment retries
 - Cancellations and refunds
-- Invoices and receipts (sent automatically by Stripe)
+
+**What Nexora handles in-app (no Stripe redirect):**
+- In-app card form (Stripe Elements embedded in the dashboard)
+- Subscription management (next renewal date, cancel, reactivate)
+- Branded Nexora PDF invoice downloads
+- Invoice history with payment status
 
 **Time to complete:** ~30 minutes
 
@@ -120,17 +126,20 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ---
 
-## STEP 5 — Enable Customer Portal
+## STEP 5 — Add Publishable Key to Vercel
 
-The Customer Portal lets tenants manage or cancel their subscription themselves.
+The frontend needs the Stripe publishable key to load the in-app card form.
 
-1. Stripe Dashboard → **Settings** → **Billing** → **Customer portal**
-2. Turn on:
-   - ✅ Allow customers to cancel subscriptions
-   - ✅ Allow customers to update payment methods
-   - ✅ Show billing history
-3. Under **Business information** → add your business name (Nexora)
-4. Click **Save**
+1. Stripe Dashboard → **Developers** → **API keys** → copy the **Publishable key** (`pk_test_...`)
+2. Go to **https://vercel.com** → your project → **Settings** → **Environment Variables**
+3. Add:
+   - **Name:** `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - **Value:** `pk_test_...`
+   - **Environment:** Production, Preview, Development
+4. Click **Save** → then **Deployments** → **Redeploy** the latest deployment
+
+> **Note:** The Customer Portal (Stripe's hosted management page) is NOT used. Nexora has
+> its own in-app billing management. You do NOT need to configure it.
 
 ---
 
@@ -184,28 +193,35 @@ curl https://nexora.cmdfleet.com/health
 ### 8.1 — Test upgrade from dashboard
 1. Open **https://hap-dev.vercel.app/login** → log in as a test tenant
 2. Go to **Settings** tab
-3. Click **Basic — $29/mo**
-4. You should be redirected to Stripe's hosted checkout page
+3. Click **Basic — $29/mo** (or choose Yearly for the discounted rate)
+4. An in-app modal appears with a card entry form (no redirect to Stripe)
 5. Enter test card: `4242 4242 4242 4242` · Expiry: `12/29` · CVC: `123`
-6. Click **Pay**
-7. You should be redirected back to the dashboard with `?billing=success`
-8. Refresh the Settings tab — plan should now show **Basic**
+6. Click **Subscribe**
+7. Modal closes — plan badge immediately updates to **BASIC**
 
 ### 8.2 — Verify webhook fired
 1. Stripe Dashboard → **Developers** → **Webhooks** → your endpoint
 2. Click on it → **Recent deliveries**
-3. You should see a `checkout.session.completed` event with status **200**
+3. You should see a `customer.subscription.updated` event with status **200**
 
-### 8.3 — Test the billing portal
-1. Still logged in as the test tenant → Settings → **Manage billing / cancel**
-2. Stripe Customer Portal opens
-3. You can see the subscription, update the card, or cancel
+### 8.3 — Test subscription management
+1. Still in Settings tab → scroll down to **Subscription Management**
+2. You should see: next renewal date, amount per month/year
+3. Click **Cancel subscription** → confirm → button changes to Reactivate
+4. Renewal card now shows amber warning with the cancellation date
+5. Click **Reactivate subscription** → subscription resumes normally
 
-### 8.4 — Test cancellation
-1. In the portal, cancel the subscription
+### 8.4 — Test invoice download
+1. Scroll down to **Invoice History**
+2. You should see at least one paid invoice listed
+3. Click **Download PDF** → a branded Nexora PDF downloads to your computer
+4. PDF should show: Nexora header, billed-to info, invoice number, line items, totals
+
+### 8.5 — Test automatic downgrade on cancellation
+1. In Stripe Dashboard → **Customers** → find your test customer → **Subscriptions** → **Cancel immediately**
 2. Stripe fires `customer.subscription.deleted`
-3. Backend downgrades the tenant to the Free plan automatically
-4. Check the Settings tab — plan should show **Free**
+3. Backend automatically downgrades the tenant to Free
+4. Check Settings tab — plan badge should now show **FREE**
 
 ---
 
@@ -241,8 +257,17 @@ The `STRIPE_WEBHOOK_SECRET` is wrong. Re-copy it from Stripe Dashboard → Webho
    ```
 3. Make sure the `metadata.client_id` and `metadata.tier` are in the Checkout session.
 
-### "No billing account found" on portal
-The tenant hasn't completed a checkout yet — they don't have a `stripe_customer_id`. They need to do at least one upgrade first.
+### "No billing account found" on subscription management
+The tenant hasn't completed a checkout yet — no `stripe_customer_id` on file. They need to upgrade from the Free plan first.
+
+### Subscription Management shows "No active Stripe subscription found"
+The tenant has a paid tier in the DB but no active Stripe subscription. This can happen if the subscription was cancelled in the Stripe Dashboard directly. The DB tier will be fixed on the next webhook event.
+
+### Invoice History is empty
+Invoices only appear after a successful payment. In Stripe test mode, invoices are generated immediately when a subscription is created with card `4242 4242 4242 4242`. If no invoices appear, check the backend logs for errors from `GET /billing/invoices`.
+
+### PDF download shows blank or fails
+Check backend logs: `docker compose -f docker-compose.prod.yml logs backend --tail=30`. The most common cause is the `reportlab` library not installed — make sure `requirements.txt` includes `reportlab` and run `bash deploy.sh` to rebuild.
 
 ---
 
