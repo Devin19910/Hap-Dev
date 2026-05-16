@@ -169,8 +169,9 @@ async def _send_and_log(
         if cfg:
             wa_kwargs = {"phone_number_id": cfg.wa_phone_number_id, "access_token": cfg.wa_access_token}
         await send_message(phone, reply_text, **wa_kwargs)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"WhatsApp send failed to {phone}: {e}")
 
     try:
         conv = db.query(WhatsAppConversation).filter(
