@@ -442,17 +442,40 @@ All in `sops/` — written so the India operator can follow them independently.
 | 16 | Production backend deployment (home server, Docker, deploy.sh) | ✅ Done |
 | 17 | Cloudflare Tunnel / Nginx internet exposure setup | ✅ Done |
 | 18 | n8n production workflows imported + Published | ✅ Done |
-| 19 | WhatsApp Meta app + webhook configured | ✅ Done (app awaiting Meta verification) |
+| 19 | WhatsApp Meta app + webhook configured | ✅ Done — fully live 2026-05-16 |
 | 20 | Self-service tenant signup tested end-to-end | ✅ Done |
 | 21 | Landing page — Plumbers + Real Estate verticals added | ✅ Done |
 | 22 | Cousin Punjab outreach script (Punjabi + Hindi + Roman) | ✅ Done — sops/cousin_outreach_script.md |
 | 23 | AI Calling Agent (Vapi) — Business plan tier | ✅ Done |
 | 24 | Billing / Stripe — in-app checkout, subscription management, invoice PDF download | ✅ Done |
-| 25 | Email notifications (appointment confirmations) | 🔜 Planned |
+| 25 | WhatsApp fully live — AI replies end-to-end tested | ✅ Done 2026-05-16 |
+| 26 | Email notifications (appointment confirmations) | 🔜 Planned |
 | 26 | Multi-language AI replies (Hindi/Punjabi) | 🔜 Planned |
 | 27 | Mobile app (React Native) | 🔜 Planned |
 | 28 | Analytics dashboard (usage trends, conversation insights) | 🔜 Planned |
 | 29 | White-label / custom domain per tenant | 🔜 Planned |
+
+---
+
+## Live Production Credentials (as of 2026-05-16)
+
+> Full details in `sops/credentials_reference.md`. Summary below for quick reference.
+
+| Service | Key Detail |
+|---|---|
+| **WhatsApp number** | +1 (781) 354-7229 |
+| **WhatsApp Phone Number ID** | `1152371264619437` |
+| **WhatsApp WABA ID** | `996017332866246` |
+| **Meta App** | Nexora Solutions (Nexora business portfolio) |
+| **Webhook** | `https://nexora.cmdfleet.com/webhooks/whatsapp` |
+| **Verify token** | `nexora-verify-2026` |
+| **Test client ID** | `28cc6e81-4e4c-4e31-b0ef-18042ff0c9b5` |
+| **Backend API** | `https://nexora.cmdfleet.com` |
+| **n8n** | `https://nexora-n8n.cmdfleet.com` |
+| **Frontend** | `https://hap-dev.vercel.app` |
+| **Server IP** | `192.168.168.98` (DHCP — run `hostname -I` if changed) |
+| **Dashboard login** | sodhi.398@gmail.com / Changeme123! |
+| **n8n login** | admin / c6df9f31451b1196 |
 
 ---
 

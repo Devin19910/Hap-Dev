@@ -1,5 +1,24 @@
 # SOP: WhatsApp Cloud API Setup (Meta)
 
+## Current Live Status (as of 2026-05-16)
+
+| Field | Value |
+|---|---|
+| **Status** | LIVE ✅ — AI replies working end-to-end |
+| **Business number** | +1 (781) 354-7229 |
+| **Phone Number ID** | `1152371264619437` |
+| **WABA ID** | `996017332866246` |
+| **Meta App** | Nexora Solutions (under Nexora business portfolio) |
+| **Webhook** | `https://nexora.cmdfleet.com/webhooks/whatsapp` ✅ verified |
+| **Token** | Permanent System User token — never expires |
+| **AI flow** | Tested live — booking, support, general inquiry all working |
+
+> To regenerate the token if it ever stops working:
+> Meta Business Suite → Settings → Users → System Users → Nexora Bot → Generate new token
+> Then update server: `ssh nexora@192.168.168.98` → edit `~/nexora/.env` → restart backend
+
+---
+
 ## What This Does
 Connects your AI backend to WhatsApp via Meta's Cloud API so the platform can receive and reply to customer messages automatically.
 
